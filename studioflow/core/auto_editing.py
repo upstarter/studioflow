@@ -136,7 +136,7 @@ class AutoEditingEngine:
         # Set library_path from config if not provided
         if self.config.library_path is None:
             cfg = get_config()
-            self.config.library_path = cfg.storage.library or cfg.storage.active or Path.home() / "Videos" / "StudioFlow" / "Library"
+            self.config.library_path = cfg.storage.studio or cfg.storage.active or Path.home() / "Videos" / "StudioFlow" / "Studio"
         
         self.resolve_api = ResolveDirectAPI()
         self.transcription_service = TranscriptionService()
@@ -322,7 +322,7 @@ class AutoEditingEngine:
         # Check if Power Bins is available
         from .power_bins_config import PowerBinsConfig
         if not PowerBinsConfig.is_available():
-            return {"error": "Power Bins not configured", "message": "Configure storage.nas or storage.library in ~/.studioflow/config.yaml"}
+            return {"error": "Power Bins not configured", "message": "Configure storage.nas or storage.studio in ~/.studioflow/config.yaml"}
         
         # Use existing stock library function as base
         result = self.resolve_api.setup_stock_library()

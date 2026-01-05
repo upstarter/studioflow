@@ -27,7 +27,7 @@ class StorageConfig(BaseModel):
     active: Path = Field(default_factory=lambda: Path.home() / "Videos" / "StudioFlow" / "Projects")
     render: Path = Field(default_factory=lambda: Path.home() / "Videos" / "StudioFlow" / "Render")
     archive: Path = Field(default_factory=lambda: Path.home() / "Videos" / "StudioFlow" / "Archive")
-    library: Optional[Path] = Field(default_factory=lambda: Path("/mnt/library/PROJECTS") if Path("/mnt/library/PROJECTS").exists() else (Path("/mnt/library") if Path("/mnt/library").exists() else None))
+    studio: Optional[Path] = Field(default_factory=lambda: Path("/mnt/studio/PROJECTS") if Path("/mnt/studio/PROJECTS").exists() else (Path("/mnt/studio") if Path("/mnt/studio").exists() else None))
     nas: Optional[Path] = None
 
     # Content-type specific paths

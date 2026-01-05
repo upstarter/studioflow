@@ -85,3 +85,4 @@ def extract_text_for_segments(segments: List[Segment], clips: List[ClipAnalysis]
     return segments
 
 
+

@@ -245,7 +245,7 @@ class TestStorageConfig:
         storage = StorageConfig()
         
         # These should be None by default
-        assert storage.library is None or isinstance(storage.library, Path)
+        assert storage.studio is None or isinstance(storage.studio, Path)
         assert storage.nas is None or isinstance(storage.nas, Path)
 
 
@@ -368,8 +368,8 @@ class TestConfigEdgeCases:
         """Test config handles None values"""
         manager = ConfigManager(temp_config_dir)
         
-        manager.set("storage.library", None)
-        value = manager.get("storage.library")
+        manager.set("storage.studio", None)
+        value = manager.get("storage.studio")
         assert value is None
     
     def test_config_deeply_nested(self, temp_config_dir):

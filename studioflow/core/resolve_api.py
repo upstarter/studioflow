@@ -105,7 +105,7 @@ class ResolveDirectAPI:
             
             # Get library path from config if not provided
             if library_path is None:
-                library_path = config.storage.library or config.storage.active or Path.home() / "Videos" / "StudioFlow" / "Library"
+                library_path = config.storage.studio or config.storage.active or Path.home() / "Videos" / "StudioFlow" / "Studio"
             
             # Set paths from library or use defaults
             if library_path.exists():
@@ -479,7 +479,7 @@ def create_documentary_project(
     if library_path is None:
         from studioflow.core.config import get_config
         config = get_config()
-        library_path = config.storage.library or Path.home() / "Videos" / "StudioFlow" / "Library"
+        library_path = config.storage.studio or Path.home() / "Videos" / "StudioFlow" / "Studio"
 
     api = ResolveDirectAPI()
 

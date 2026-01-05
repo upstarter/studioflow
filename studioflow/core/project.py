@@ -66,15 +66,15 @@ class Project:
         if path:
             self.path = Path(path)
         else:
-            # Prefer library path if it exists
-            library_path = self.config.storage.library
-            if library_path and library_path.exists():
-                # If library_path already ends with "PROJECTS", use it directly
+            # Prefer studio path if it exists
+            studio_path = self.config.storage.studio
+            if studio_path and studio_path.exists():
+                # If studio_path already ends with "PROJECTS", use it directly
                 # Otherwise, append "PROJECTS"
-                if library_path.name == "PROJECTS":
-                    projects_dir = library_path
+                if studio_path.name == "PROJECTS":
+                    projects_dir = studio_path
                 else:
-                    projects_dir = library_path / "PROJECTS"
+                    projects_dir = studio_path / "PROJECTS"
                 projects_dir.mkdir(parents=True, exist_ok=True)
                 self.path = projects_dir / self._sanitize_name(name)
             else:

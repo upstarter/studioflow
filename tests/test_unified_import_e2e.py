@@ -80,14 +80,14 @@ class TestUnifiedImportPipeline:
         # Verify project structure
         project_path = result.project_path
         assert project_path.exists(), "Project directory not created"
-        assert (project_path / "01_Media" / "Original").exists(), "Original media directory not created"
-        assert (project_path / "01_Media" / "Normalized").exists(), "Normalized media directory not created"
-        assert (project_path / "01_Media" / "Proxy").exists(), "Proxy directory not created"
+        assert (project_path / "01_MEDIA" / "Original").exists(), "Original media directory not created"
+        assert (project_path / "01_MEDIA" / "Normalized").exists(), "Normalized media directory not created"
+        assert (project_path / "01_MEDIA" / "Proxy").exists(), "Proxy directory not created"
         
         # Verify files exist
-        original_dir = project_path / "01_Media" / "Original"
-        normalized_dir = project_path / "01_Media" / "Normalized"
-        proxy_dir = project_path / "01_Media" / "Proxy"
+        original_dir = project_path / "01_MEDIA" / "Original"
+        normalized_dir = project_path / "01_MEDIA" / "Normalized"
+        proxy_dir = project_path / "01_MEDIA" / "Proxy"
         
         original_files = list(original_dir.rglob("*.mp4")) + list(original_dir.rglob("*.MP4"))
         normalized_files = list(normalized_dir.rglob("*normalized*"))
@@ -240,9 +240,9 @@ class TestUnifiedImportPipeline:
         # Verify complete project structure
         project_path = result.project_path
         expected_dirs = [
-            "01_Media/Original",
-            "01_Media/Normalized",
-            "01_Media/Proxy",
+            "01_MEDIA/Original",
+            "01_MEDIA/Normalized",
+            "01_MEDIA/Proxy",
             "02_Transcription",
             "03_Segments"
         ]
@@ -316,9 +316,9 @@ class TestUnifiedImportPipeline:
                     distutils.dir_util.copy_tree(str(source_dir), str(dest_dir))
         
         # Copy normalized media (for audio verification)
-        normalized_dir = project_path / "01_Media" / "Normalized"
+        normalized_dir = project_path / "01_MEDIA" / "Normalized"
         if normalized_dir.exists():
-            dest_normalized = project_output / "01_Media" / "Normalized"
+            dest_normalized = project_output / "01_MEDIA" / "Normalized"
             dest_normalized.mkdir(parents=True, exist_ok=True)
             for norm_file in normalized_dir.rglob("*"):
                 if norm_file.is_file():
@@ -336,13 +336,13 @@ class TestUnifiedImportPipeline:
 {project_path}
 
 ## Output Structure
-- `01_Media/Normalized/` - Normalized audio files (for verification)
+- `01_MEDIA/Normalized/` - Normalized audio files (for verification)
 - `02_Transcription/` - Transcripts (JSON + SRT)
 - `03_Segments/` - Segment boundaries (JSON) + actual split video clips (.mov)
 - `04_Timelines/` - Rough cut EDL files
 
 ## Verification
-1. **Audio Normalization**: Play files in `01_Media/Normalized/` and verify consistent audio levels
+1. **Audio Normalization**: Play files in `01_MEDIA/Normalized/` and verify consistent audio levels
 2. **Transcripts**: Check `02_Transcription/*.json` for word-level timestamps
 3. **Segments**: 
    - Check `03_Segments/*.json` for correct cut points
@@ -381,14 +381,14 @@ class TestUnifiedImportPipeline:
     def test_library_path_handling(self, temp_project_dir):
         """
         Test library path handling:
-        - Use /mnt/library/PROJECTS/ if exists
+        - Use /mnt/studio/PROJECTS/ if exists
         - Fallback to config.storage.active
         """
         from studioflow.core.project import Project
         
         # Test with library path (if exists)
         config = get_config()
-        library_path = config.storage.library
+        library_path = config.storage.studio
         
         project = Project("test_library", path=None)
         

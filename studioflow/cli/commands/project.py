@@ -166,11 +166,11 @@ def archive(
                 config.storage.episodes / name if hasattr(config.storage, 'episodes') else None,
             ]
             # Add library paths if configured
-            if config.storage.library:
+            if config.storage.studio:
                 search_paths.extend([
-                    config.storage.library / "PROJECTS" / "DOCS" / name,
-                    config.storage.library / "PROJECTS" / "EPISODES" / name,
-                    config.storage.library / "PROJECTS" / "FILMS" / name,
+                    config.storage.studio / "PROJECTS" / "DOCS" / name,
+                    config.storage.studio / "PROJECTS" / "EPISODES" / name,
+                    config.storage.studio / "PROJECTS" / "FILMS" / name,
                 ])
 
             project_path = None
@@ -306,7 +306,7 @@ def _discover_projects(library_path: Optional[Path] = None) -> List[Dict]:
     if library_path is None:
         from studioflow.core.config import get_config
         config = get_config()
-        library_path = config.storage.library or Path.home() / "Videos" / "StudioFlow" / "Library"
+        library_path = config.storage.studio or Path.home() / "Videos" / "StudioFlow" / "Studio"
     
     config = get_config()
     projects = []

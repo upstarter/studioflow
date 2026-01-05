@@ -145,8 +145,8 @@ class AutoImportService:
         project_path.mkdir(parents=True, exist_ok=True)
 
         # Create standard directories
-        (project_path / "01_Media" / "Original").mkdir(parents=True, exist_ok=True)
-        (project_path / "01_Media" / "Proxy").mkdir(parents=True, exist_ok=True)
+        (project_path / "01_MEDIA" / "Original").mkdir(parents=True, exist_ok=True)
+        (project_path / "01_MEDIA" / "Proxy").mkdir(parents=True, exist_ok=True)
         (project_path / "02_Project").mkdir(parents=True, exist_ok=True)
         (project_path / "03_Render").mkdir(parents=True, exist_ok=True)
 
@@ -203,8 +203,8 @@ class AutoImportService:
 
         # Get active project
         project = self.get_active_project()
-        media_dir = project / "01_Media" / "Original" / camera_id
-        proxy_dir = project / "01_Media" / "Proxy"
+        media_dir = project / "01_MEDIA" / "Original" / camera_id
+        proxy_dir = project / "01_MEDIA" / "Proxy"
         media_dir.mkdir(parents=True, exist_ok=True)
         proxy_dir.mkdir(parents=True, exist_ok=True)
 
@@ -310,7 +310,7 @@ class AutoImportService:
                     progress.update(proxy_task, completed=len(imported_videos))
 
         # Save manifest
-        manifest_path = project / "01_Media" / f"import_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        manifest_path = project / "01_MEDIA" / f"import_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         with open(manifest_path, 'w') as f:
             json.dump(manifest, f, indent=2)
 

@@ -41,7 +41,7 @@ def episode(
     if library_path is None:
         from studioflow.core.config import get_config
         config = get_config()
-        library_path = config.storage.library or Path.home() / "Videos" / "StudioFlow" / "Library"
+        library_path = config.storage.studio or Path.home() / "Videos" / "StudioFlow" / "Studio"
     
     console.print(Panel.fit(
         f"[bold cyan]Complete Episode Workflow[/bold cyan]\n"

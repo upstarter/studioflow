@@ -130,3 +130,4 @@ def get_gpu_detector() -> GPUDetector:
         _gpu_detector = GPUDetector()
     return _gpu_detector
 
+

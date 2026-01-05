@@ -150,3 +150,4 @@ The 0% you're seeing is likely between transcriptions. During active transcripti
 
 The 0% compute you're seeing is normal when GPU is idle between operations.
 
+

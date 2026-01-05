@@ -42,7 +42,7 @@ def mock_config() -> Generator[Config, None, None]:
         manager.set("storage.active", str(test_base / "Projects"))
         manager.set("storage.ingest", str(test_base / "Ingest"))
         manager.set("storage.archive", str(test_base / "Archive"))
-        manager.set("storage.library", str(test_base / "Library"))
+        manager.set("storage.studio", str(test_base / "Studio"))
         manager.set("storage.render", str(test_base / "Render"))
         
         yield manager.config
@@ -247,8 +247,8 @@ def test_output_dir() -> Generator[Path, None, None]:
           original_clip_transcript.json
         markers.json
     """
-    output_base = Path(__file__).parent / "output"
-    output_base.mkdir(exist_ok=True)
+    output_base = Path(__file__).parent / "output" / "e2e_test_runs"
+    output_base.mkdir(parents=True, exist_ok=True)
     
     # Create subdirectory for this test run
     from datetime import datetime

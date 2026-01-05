@@ -157,7 +157,7 @@ def unified(
     3. Auto-create codeword-YYYYMMDD_Import if none
     
     Library Path:
-    - Uses /mnt/library/PROJECTS/ if exists
+    - Uses /mnt/studio/PROJECTS/ if exists
     - Fallback to config.storage.active
     
     Project naming: codeword-YYYYMMDD_Import

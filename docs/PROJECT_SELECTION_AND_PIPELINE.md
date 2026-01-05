@@ -73,18 +73,18 @@ def determine_target_project(mount_point: Path) -> Optional[Project]:
 
 ### 2. Library Path Structure
 **Questions:**
-- Is `/mnt/library/PROJECTS/` the correct base path?
-- Should projects be organized by type? (e.g., `PROJECTS/Episodes/`, `PROJECTS/Docs/`)
-- Do you want projects in `/mnt/library/PROJECTS/` or `config.storage.active`?
+- Projects are stored in `/mnt/studio/PROJECTS/` (via `config.storage.active`)
+- Projects are organized by name (flat structure, not by type)
+- Test outputs go to `/mnt/dev/studioflow/tests/output/`
 
 **Current:**
 - Uses `config.storage.active` (defaults to `~/Videos/StudioFlow/Projects/`)
-- Need to configure to use `/mnt/library/PROJECTS/`
+- Uses `config.storage.active` which defaults to `/mnt/studio/PROJECTS/`
 
-**Recommendation:**
-- Add `library_path` to config
-- Default to `/mnt/library/PROJECTS/` if exists
-- Fallback to `config.storage.active`
+**Current:**
+- Projects are stored in `/mnt/studio/PROJECTS/` via `config.storage.active`
+- Test outputs go to `/mnt/dev/studioflow/tests/output/`
+- No separate library path needed
 
 ### 3. Processing Priority
 **Questions:**
@@ -129,7 +129,7 @@ def determine_target_project(mount_point: Path) -> Optional[Project]:
 1. Enhance `AutoImportService` to read project from SD card
 2. Integrate with `StateManager` for active project
 3. Add date-based auto-create fallback
-4. Configure library path (`/mnt/library/PROJECTS/`)
+4. Projects use `/mnt/studio/PROJECTS/` (via `config.storage.active`)
 
 **Files to Modify:**
 - `studioflow/core/auto_import.py` - Add project selection logic
@@ -198,10 +198,10 @@ def determine_target_project(mount_point: Path) -> Optional[Project]:
    - Should SD cards be labeled with project names?
    - Do you want a config file on SD card (`.studioflow_project`)?
 
-2. **Library Path:**
-   - Confirm `/mnt/library/PROJECTS/` is correct
-   - Should projects be organized by type?
-   - Do you want subdirectories (Episodes, Docs, etc.)?
+2. **Storage Path:**
+   - Projects use `/mnt/studio/PROJECTS/` (via `config.storage.active`)
+   - Projects are organized by name (flat structure)
+   - Test outputs go to `/mnt/dev/studioflow/tests/output/`
 
 3. **Processing Behavior:**
    - Should everything happen automatically or in phases?
@@ -229,9 +229,9 @@ If you don't specify, I'll implement with these defaults:
    - Use active project if set
    - Auto-create `YYYYMMDD_Shoot` if none
 
-2. **Library Path:**
-   - Use `/mnt/library/PROJECTS/` if exists
-   - Fallback to `config.storage.active`
+2. **Storage Path:**
+   - Use `/mnt/studio/PROJECTS/` (via `config.storage.active`)
+   - Test outputs go to `/mnt/dev/studioflow/tests/output/`
 
 3. **Processing:**
    - Immediate: Import, Normalize, Proxies
@@ -263,4 +263,5 @@ If you don't specify, I'll implement with these defaults:
 2. Build unified import pipeline
 3. Integrate all processing steps
 4. Test end-to-end workflow
+
 

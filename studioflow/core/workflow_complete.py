@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
+import logging
+
 from .auto_editing import AutoEditingEngine, AutoEditConfig
 from .batch_processor import BatchProcessor
 from .project_health import ProjectHealthChecker
@@ -16,6 +18,8 @@ from .media import MediaScanner
 from .transcription import TranscriptionService
 from .resolve_api import ResolveDirectAPI
 from .config import get_config
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowType(str, Enum):
@@ -79,7 +83,7 @@ class CompleteWorkflowEngine:
         # Get library path from config if not provided
         if library_path is None:
             config = get_config()
-            library_path = config.storage.library or config.storage.active or Path.home() / "Videos" / "StudioFlow" / "Library"
+            library_path = config.storage.studio or config.storage.active or Path.home() / "Videos" / "StudioFlow" / "Studio"
         
         start_time = datetime.now()
         steps = []
@@ -190,9 +194,23 @@ class CompleteWorkflowEngine:
             status="running"
         )
         steps.append(step)
-        # TODO: Implement actual import
-        step.result = {"success": True, "files_imported": 0}
-        step.status = "completed"
+        # Import using unified import pipeline
+        from .unified_import import UnifiedImportPipeline
+        pipeline = UnifiedImportPipeline()
+        import_result = pipeline.process_sd_card(
+            source_path=source_path,
+            normalize_audio=True,
+            transcribe=False,  # Transcription handled separately
+            detect_markers=False,
+            generate_rough_cut=False,
+            setup_resolve=False
+        )
+        step.result = {
+            "success": import_result.success,
+            "files_imported": import_result.files_imported,
+            "errors": import_result.errors
+        }
+        step.status = "completed" if import_result.success else "failed"
         
         # Step 2: Transcribe (if requested)
         if transcribe:
@@ -351,8 +369,52 @@ class CompleteWorkflowEngine:
     
     def _step_create_proxies(self, source_path: Path) -> Dict:
         """Create proxies step"""
-        # TODO: Implement proxy creation
-        return {"success": True, "proxies_created": 0}
+        from .auto_import import AutoImportService
+        
+        auto_import = AutoImportService()
+        proxy_count = 0
+        errors = []
+        
+        # Find all video files
+        video_files = []
+        for ext in ['.mp4', '.mov', '.mxf', '.MP4', '.MOV']:
+            video_files.extend(source_path.rglob(f"*{ext}"))
+        
+        # Create proxies for each video
+        proxy_dir = source_path.parent / "Proxy"
+        proxy_dir.mkdir(exist_ok=True)
+        
+        for video_file in video_files:
+            try:
+                # Use auto_import to get camera profile
+                camera_id = auto_import.detect_camera(video_file)
+                profile = auto_import.get_camera_profile(camera_id)
+                
+                if profile:
+                    proxy_path = proxy_dir / f"{video_file.stem}_proxy.mov"
+                    
+                    # Generate proxy using auto_import service
+                    if auto_import.generate_proxy(video_file, proxy_path, profile):
+                        proxy_count += 1
+                    else:
+                        errors.append(f"Failed to create proxy for {video_file.name}")
+                else:
+                    # Fallback: use default proxy settings
+                    from .resolve import ResolveIntegration
+                    proxy_path = ResolveIntegration.create_proxy_media(video_file, proxy_dir)
+                    if proxy_path:
+                        proxy_count += 1
+                    else:
+                        errors.append(f"Failed to create proxy for {video_file.name}")
+            except Exception as e:
+                logger.warning(f"Failed to create proxy for {video_file}: {e}")
+                errors.append(f"Error creating proxy for {video_file.name}: {e}")
+        
+        return {
+            "success": proxy_count > 0,
+            "proxies_created": proxy_count,
+            "errors": errors
+        }
     
     def _step_validate_export(self, video_path: Path) -> Dict:
         """Validate export step"""
@@ -369,8 +431,35 @@ class CompleteWorkflowEngine:
     
     def _step_generate_thumbnail(self, video_path: Path, project_name: str) -> Dict:
         """Generate thumbnail step"""
-        # TODO: Implement thumbnail generation
-        return {"success": True, "thumbnail_path": None}
+        from .ffmpeg import FFmpegProcessor
+        
+        # Extract frame at 5 seconds (or middle if video is shorter)
+        info = FFmpegProcessor.get_media_info(video_path)
+        duration = info.get('duration_seconds', 5.0)
+        thumbnail_time = min(5.0, duration / 2)
+        
+        thumbnail_dir = video_path.parent / "Thumbnails"
+        thumbnail_dir.mkdir(exist_ok=True)
+        thumbnail_path = thumbnail_dir / f"{project_name}_thumbnail.jpg"
+        
+        result = FFmpegProcessor.extract_frame(
+            video_path,
+            thumbnail_path,
+            time_seconds=thumbnail_time
+        )
+        
+        if result.success:
+            return {
+                "success": True,
+                "thumbnail_path": str(thumbnail_path),
+                "time": thumbnail_time
+            }
+        else:
+            return {
+                "success": False,
+                "thumbnail_path": None,
+                "error": result.error_message
+            }
     
     def _step_upload(self, video_path: Path, project_name: str) -> Dict:
         """Upload step"""
@@ -380,7 +469,32 @@ class CompleteWorkflowEngine:
         if not service.authenticate():
             return {"success": False, "error": "YouTube authentication failed"}
         
-        # TODO: Implement actual upload
-        return {"success": True, "video_id": None}
+        # Upload video (requires YouTube API credentials to be configured)
+        try:
+            result = service.upload_video(
+                video_path=video_path,
+                title=project_name,
+                description=f"Auto-uploaded: {project_name}",
+                privacy="private"  # Start as private for review
+            )
+            
+            if result.get("success"):
+                return {
+                    "success": True,
+                    "video_id": result.get("video_id"),
+                    "url": result.get("url")
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": result.get("error", "Upload failed")
+                }
+        except Exception as e:
+            logger.error(f"YouTube upload failed: {e}")
+            return {
+                "success": False,
+                "error": f"YouTube upload exception: {str(e)}",
+                "note": "YouTube API credentials may not be configured"
+            }
 
 

@@ -147,7 +147,7 @@ class UnifiedImportPipeline:
         """Import files from ingest pool directly to project (skip duplicate copy)"""
         import shutil
         
-        media_dir = project_path / "01_Media" / "Original" / camera_id
+        media_dir = project_path / "01_MEDIA" / "Original" / camera_id
         media_dir.mkdir(parents=True, exist_ok=True)
         
         # Find all video files in ingest pool
@@ -288,7 +288,7 @@ class UnifiedImportPipeline:
                 logger.exception("Media import error")
                 return result  # Critical error - cannot continue
             
-            media_dir = project.path / "01_Media" / "Original" / camera_id
+            media_dir = project.path / "01_MEDIA" / "Original" / camera_id
             imported_files = (
                 list(media_dir.glob("*.mp4")) + 
                 list(media_dir.glob("*.MP4")) + 
@@ -416,7 +416,7 @@ class UnifiedImportPipeline:
     
     def _normalize_media(self, media_files: List[Path], project_path: Path) -> int:
         """Normalize audio for all media files (parallel processing)"""
-        normalized_dir = project_path / "01_Media" / "Normalized"
+        normalized_dir = project_path / "01_MEDIA" / "Normalized"
         normalized_dir.mkdir(parents=True, exist_ok=True)
         
         # Filter out already normalized files
@@ -615,10 +615,14 @@ class UnifiedImportPipeline:
             
             output_segment = segments_dir / f"{seg_name}.mov"
             
-            # Skip if already exists
-            if output_segment.exists():
+            # Skip if already exists and has content (non-zero size)
+            if output_segment.exists() and output_segment.stat().st_size > 0:
                 clips_created += 1
                 continue
+            
+            # Remove empty file if it exists (from previous failed attempt)
+            if output_segment.exists() and output_segment.stat().st_size == 0:
+                output_segment.unlink()
             
             # Cut video segment (use GPU-accelerated encoding for precise cuts)
             duration = seg["end"] - seg["start"]
@@ -637,7 +641,7 @@ class UnifiedImportPipeline:
     
     def _generate_proxies(self, media_files: List[Path], project_path: Path, profile: CameraProfile) -> int:
         """Generate proxies for media files"""
-        proxy_dir = project_path / "01_Media" / "Proxy"
+        proxy_dir = project_path / "01_MEDIA" / "Proxy"
         proxy_dir.mkdir(parents=True, exist_ok=True)
         
         proxy_count = 0
@@ -677,7 +681,7 @@ class UnifiedImportPipeline:
     def _generate_rough_cut(self, project_path: Path) -> bool:
         """Generate rough cut from segments"""
         try:
-            media_dir = project_path / "01_Media" / "Original"
+            media_dir = project_path / "01_MEDIA" / "Original"
             
             # Analyze clips
             clips = self.rough_cut_engine.analyze_clips(media_dir)
@@ -727,24 +731,24 @@ class UnifiedImportPipeline:
             # Create project
             settings = FX30ProjectSettings()
             
-            # Set library path (use /mnt/library/PROJECTS/ if exists, fallback to config)
-            library_path = self.config.storage.library
-            if library_path and library_path.exists():
-                # If library_path is /mnt/library/PROJECTS, use it directly
-                if library_path.name == "PROJECTS":
-                    settings.working_folder = str(library_path)
-                    settings.cache_path = str(library_path.parent / "CACHE")
-                    settings.proxy_path = str(library_path.parent / "PROXIES")
+            # Set studio path (use /mnt/studio/PROJECTS/ if exists, fallback to config)
+            studio_path = self.config.storage.studio
+            if studio_path and studio_path.exists():
+                # If studio_path is /mnt/studio/PROJECTS, use it directly
+                if studio_path.name == "PROJECTS":
+                    settings.working_folder = str(studio_path)
+                    settings.cache_path = str(studio_path.parent / "CACHE")
+                    settings.proxy_path = str(studio_path.parent / "PROXIES")
                 else:
-                    # If library_path is /mnt/library, append PROJECTS
-                    settings.working_folder = str(library_path / "PROJECTS")
-                    settings.cache_path = str(library_path / "CACHE")
-                    settings.proxy_path = str(library_path / "PROXIES")
+                    # If studio_path is /mnt/studio, append PROJECTS
+                    settings.working_folder = str(studio_path / "PROJECTS")
+                    settings.cache_path = str(studio_path / "CACHE")
+                    settings.proxy_path = str(studio_path / "PROXIES")
             else:
                 # Fallback to project's base directory
                 settings.working_folder = str(project.path.parent)
                 settings.cache_path = str(project.path / "Cache")
-                settings.proxy_path = str(project.path / "01_Media" / "Proxy")
+                settings.proxy_path = str(project.path / "01_MEDIA" / "Proxy")
             
             # Create project (does not auto-open)
             success = api.create_project(project_name, settings, library_path)
@@ -766,7 +770,7 @@ class UnifiedImportPipeline:
             
             # Import media (optional - can be done manually)
             try:
-                media_dir = project.path / "01_Media" / "Original"
+                media_dir = project.path / "01_MEDIA" / "Original"
                 if media_dir.exists():
                     # Find all video files
                     video_files = []

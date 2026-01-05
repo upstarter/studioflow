@@ -231,10 +231,17 @@ class MarkerCommandParser:
                         break
                 continue
             
-            # Check for "ending" - BACKWARDS COMPATIBLE
-            # If "ending" has commands after it → treat as "apply" (retroactive)
-            # If "ending" alone → sequence end (current behavior)
+            # Check for "ending" - DEPRECATED: Use "apply" instead
+            # "ending" is kept for backwards compatibility but should be replaced with "apply"
             if cmd == "ending":
+                import warnings
+                warnings.warn(
+                    "The 'ending' marker is deprecated. Use 'apply' for retroactive actions instead. "
+                    "Example: 'slate apply conclusion done' instead of 'slate ending conclusion done'",
+                    DeprecationWarning,
+                    stacklevel=2
+                )
+                
                 # Check if there are commands after "ending" (before "done")
                 has_commands = False
                 j = i + 1
@@ -257,8 +264,10 @@ class MarkerCommandParser:
                             break
                     i = j  # Move past all commands
                 else:
-                    # "ending" alone → sequence end (backwards compatible)
-                    parsed.ending = True
+                    # "ending" alone → DEPRECATED: No longer creates sequence end
+                    # Segments naturally end at next marker or end of video
+                    # This is kept for backwards compatibility but does nothing
+                    parsed.ending = False  # Changed: no longer marks sequence end
                     i += 1
                 continue
             

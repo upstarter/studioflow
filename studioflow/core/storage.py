@@ -22,7 +22,7 @@ class StorageTierSystem:
             "auto_archive": True
         },
         "active": {
-            "path": Path("/mnt/studio/Projects"),
+            "path": Path("/mnt/studio/PROJECTS"),
             "description": "Current editing projects",
             "retention_days": 30,
             "auto_archive": True
@@ -33,8 +33,8 @@ class StorageTierSystem:
             "retention_days": 14,
             "auto_archive": False
         },
-        "library": {
-            "path": Path("/mnt/library"),
+        "studio": {
+            "path": Path("/mnt/studio"),
             "description": "Resolve projects workspace, reusable assets, music, templates",
             "retention_days": None,  # Permanent
             "auto_archive": False
@@ -326,11 +326,11 @@ class StorageTierSystem:
 
         # Assets
         elif ext in [".png", ".jpg", ".wav", ".mp3", ".cube", ".svg"]:
-            return "library"  # Reusable assets
+            return "studio"  # Reusable assets
 
         # Documents
         elif ext in [".txt", ".md", ".pdf", ".docx"]:
-            return "library"  # Documentation
+            return "studio"  # Documentation
 
         # Based on file type hint
         if file_type:
@@ -341,7 +341,7 @@ class StorageTierSystem:
             elif file_type in ["export", "render", "output"]:
                 return "render"
             elif file_type in ["asset", "template", "music"]:
-                return "library"
+                return "studio"
             elif file_type in ["backup", "old", "complete"]:
                 return "archive"
 

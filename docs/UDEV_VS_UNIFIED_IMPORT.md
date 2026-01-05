@@ -42,7 +42,7 @@ studioflow-card-import.sh runs
   ↓
 2. Run: sf import unified /mount/point (full pipeline)
   ↓
-Complete: Project ready in /mnt/library/PROJECTS/
+Complete: Project ready in /mnt/studio/PROJECTS/
 ```
 
 ---
@@ -90,7 +90,7 @@ So when you insert an SD card:
 1. Udev detects it
 2. Script copies to ingest pool (backup)
 3. Script runs unified pipeline (full automation)
-4. Project ready in `/mnt/library/PROJECTS/`
+4. Project ready in `/mnt/studio/PROJECTS/`
 
 ---
 
@@ -120,7 +120,7 @@ So when you insert an SD card:
    - Detects markers
    - Generates rough cut
    - Sets up Resolve
-4. **Project ready** in `/mnt/library/PROJECTS/`
+4. **Project ready** in `/mnt/studio/PROJECTS/`
 5. **Notification** shows completion
 
 ### ✅ **Manual Workflow (If Needed):**
@@ -148,4 +148,5 @@ sf import unified /media/user/SDCARD --codeword compliant_ape
 **No changes needed** - your current setup is optimal!
 
 The udev service is the **trigger**, and the unified pipeline is the **engine**. They work together perfectly.
+
 

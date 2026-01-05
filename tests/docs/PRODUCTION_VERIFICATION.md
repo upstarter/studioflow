@@ -3,7 +3,7 @@
 ## Test Run Location
 
 **Project:** `production_verification-20260104_Import`  
-**Path:** `/mnt/studio/Projects/20260104_production_verification-20260104_Import`
+**Path:** `/mnt/dev/studioflow/tests/output/unified_pipeline/projects/20260104_production_verification-20260104_Import`
 
 ## What Was Created
 
@@ -54,28 +54,28 @@
 ### Step 1: Check Audio Normalization
 ```bash
 # Play normalized files and verify audio levels
-mpv /mnt/studio/Projects/20260104_production_verification-20260104_Import/01_Media/Normalized/*.MP4
+mpv /mnt/studio/PROJECTS/20260104_production_verification-20260104_Import/01_Media/Normalized/*.MP4
 ```
 **Expected:** Audio should be at consistent level (-14 LUFS), no clipping
 
 ### Step 2: Verify Transcripts
 ```bash
 # Check transcript JSON structure
-cat /mnt/studio/Projects/20260104_production_verification-20260104_Import/02_Transcription/*_transcript.json | jq '.words[0:5]'
+cat /mnt/studio/PROJECTS/20260104_production_verification-20260104_Import/02_Transcription/*_transcript.json | jq '.words[0:5]'
 ```
 **Expected:** Should show word objects with `word`, `start`, `end` fields
 
 ### Step 3: Verify Marker Detection
 ```bash
 # Check segments file
-cat /mnt/studio/Projects/20260104_production_verification-20260104_Import/03_Segments/*_segments.json | jq '.markers, .segments | length'
+cat /mnt/studio/PROJECTS/20260104_production_verification-20260104_Import/03_Segments/*_segments.json | jq '.markers, .segments | length'
 ```
 **Expected:** Should show markers detected and segments extracted
 
 ### Step 4: Verify Segment Cut Points
 ```bash
 # Check segment boundaries
-cat /mnt/studio/Projects/20260104_production_verification-20260104_Import/03_Segments/*_segments.json | jq '.segments[] | {start, end, duration: (.end - .start)}'
+cat /mnt/studio/PROJECTS/20260104_production_verification-20260104_Import/03_Segments/*_segments.json | jq '.segments[] | {start, end, duration: (.end - .start)}'
 ```
 **Expected:** 
 - Segments should start after "done" (with padding)
@@ -85,7 +85,7 @@ cat /mnt/studio/Projects/20260104_production_verification-20260104_Import/03_Seg
 ### Step 5: Verify Rough Cut
 ```bash
 # Check EDL file
-head -20 /mnt/studio/Projects/20260104_production_verification-20260104_Import/04_Timelines/rough_cut.edl
+head -20 /mnt/studio/PROJECTS/20260104_production_verification-20260104_Import/04_Timelines/rough_cut.edl
 ```
 **Expected:** EDL should contain timeline entries with file paths and timecodes
 
@@ -136,4 +136,5 @@ For `CAMB-C0030-original-markers.MP4`:
 - Check segments were extracted
 - Verify EDL file was generated
 - Check rough cut engine logs
+
 

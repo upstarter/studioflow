@@ -46,7 +46,7 @@
    - Generates rough cut
    - Sets up Resolve
    ↓
-7. Project Ready in /mnt/library/PROJECTS/
+7. Project Ready in /mnt/studio/PROJECTS/
    ↓
 8. Desktop Notification: "Complete import pipeline finished!"
 ```
@@ -133,4 +133,5 @@ When you insert an SD card:
 4. Ready for editing
 
 No manual steps required! 🎬
+
 

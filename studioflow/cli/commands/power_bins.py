@@ -102,7 +102,7 @@ def create_structure():
     """Create recommended Power Bins directory structure"""
     
     if not PowerBinsConfig.is_available():
-        console.print("[yellow]Power Bins is not configured. Configure storage.nas or storage.library first.[/yellow]")
+        console.print("[yellow]Power Bins is not configured. Configure storage.nas or storage.studio first.[/yellow]")
         return
     
     base_path = PowerBinsConfig.get_base_path()

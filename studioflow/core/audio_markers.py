@@ -135,23 +135,35 @@ class AudioMarkerDetector:
     
     def _classify_marker_type(self, parsed: ParsedCommands) -> str:
         """
-        Classify marker type: START, END, RETROACTIVE, or STANDALONE
+        Classify marker type: START, RETROACTIVE, or STANDALONE
         
         Rules:
-        - RETROACTIVE: Has "apply" or "ending" with commands (retroactive actions)
-        - END: Has "ending" alone (no commands) - sequence end
-        - START: Has "order" or "step" (organization commands)
-        - STANDALONE: Just "mark" or effects/transitions (no "order", no "step", no "ending")
+        - RETROACTIVE: Has "apply" (or deprecated "ending" with commands) - retroactive actions
+        - START: Has "order", "step", "scene_number", or "take" (organization commands)
+        - STANDALONE: Just "mark" or effects/transitions (no organization commands)
         
-        Note: "naming" is temporarily disabled to avoid ambiguity
+        Note: 
+        - "ending" is deprecated - use "apply" for all retroactive actions
+        - "ending" alone no longer creates sequence end (segments end naturally)
+        - "naming" is temporarily disabled to avoid ambiguity
         """
-        # RETROACTIVE: Has "apply" or "ending" with commands (backwards compatible)
+        # RETROACTIVE: Has "apply" (or deprecated "ending" with commands)
         if parsed.retroactive_actions:
             return "retroactive"
         
-        # END: Has "ending" alone (no commands) - sequence end
+        # DEPRECATED: "ending" alone no longer creates sequence end
+        # Segments naturally end at next marker or end of video
+        # This check is kept for backwards compatibility but should not be used
         if parsed.ending:
-            return "end"
+            import warnings
+            warnings.warn(
+                "The 'ending' marker alone is deprecated and no longer creates a sequence end. "
+                "Segments end naturally at the next marker or end of video.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+            # Treat as retroactive (does nothing, but doesn't create segment)
+            return "retroactive"
         
         # START markers have "take", "order", "scene_number", or "step" (organization commands)
         # "naming" is temporarily disabled
@@ -200,20 +212,10 @@ class AudioMarkerDetector:
                 return cut_point
             return done_time
         
-        elif marker_type == "end":
-            # END marker: Cut AFTER last content word (with padding after)
-            # This removes dead space but includes a tiny bit after last word
-            # for natural jump cuts
-            words_before = [w for w in words if w.get("end", 0) < slate_time]
-            if words_before:
-                last_word_end = words_before[-1]["end"]
-                # Add small padding AFTER last word (extend a bit)
-                # This gives a tiny bit of audio/video after the word ends
-                cut_point = min(slate_time, last_word_end + PADDING_AFTER)
-                return cut_point
-            return slate_time
-        
-        else:  # standalone
+        # Note: "end" marker type is deprecated - segments end naturally
+        # This code path should not be reached in normal operation
+        # but kept for backwards compatibility
+        else:  # standalone or deprecated "end"
             # STANDALONE marker: Cut at start of next speech after "done"
             # This removes dead space between "done" and next content
             words_after_done = [w for w in words if w.get("start", 0) > done_time]
@@ -277,7 +279,8 @@ def extract_segments_from_markers(
         # - START markers (with order/step)
         # - STANDALONE markers (mark, effect, transition, etc.) - they all create segments
         # - END markers don't create segments (they end previous segments)
-        if marker.marker_type != "end":
+        # - RETROACTIVE markers don't create segments (they apply actions to previous segments)
+        if marker.marker_type != "end" and marker.marker_type != "retroactive":
             # Segment starts at cut_point of START marker (first words after "done")
             segment_start = marker.cut_point
             

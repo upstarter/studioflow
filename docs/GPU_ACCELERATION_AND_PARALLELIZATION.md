@@ -138,3 +138,4 @@ return ("libx264", "fast")  # Force CPU
 3. **Dynamic Worker Count**: Adjust based on available VRAM/CPU cores
 4. **GPU Memory Management**: Monitor VRAM and adjust batch sizes
 
+

@@ -1,5 +1,5 @@
 """
-Library workspace commands optimized for /mnt/library workflow
+Studio workspace commands optimized for /mnt/studio workflow
 """
 
 import typer
@@ -19,12 +19,12 @@ app = typer.Typer()
 
 @app.command()
 def status(
-    library_path: Optional[Path] = typer.Option(None, "--path", "-p", help="Library path (defaults to /mnt/library)")
+    library_path: Optional[Path] = typer.Option(None, "--path", "-p", help="Studio path (defaults to /mnt/studio)")
 ):
     """Show library workspace status and structure"""
     
     if library_path is None:
-        library_path = Path("/mnt/library")
+        library_path = Path("/mnt/studio")
     
     if not library_path.exists():
         console.print(f"[red]Library path does not exist: {library_path}[/red]")
@@ -91,13 +91,13 @@ def status(
 
 @app.command()
 def init(
-    library_path: Optional[Path] = typer.Option(None, "--path", "-p", help="Library path (defaults to /mnt/library)"),
+    library_path: Optional[Path] = typer.Option(None, "--path", "-p", help="Studio path (defaults to /mnt/studio)"),
     create_structure: bool = typer.Option(True, "--structure/--no-structure", help="Create directory structure")
 ):
     """Initialize library workspace structure"""
     
     if library_path is None:
-        library_path = Path("/mnt/library")
+        library_path = Path("/mnt/studio")
     
     console.print(f"Initializing library workspace at [cyan]{library_path}[/cyan]...")
     
@@ -145,7 +145,7 @@ def init(
     from studioflow.core.config import ConfigManager
     config_mgr = ConfigManager()
     config = config_mgr.config
-    config.storage.library = library_path
+    config.storage.studio = library_path
     config_mgr.save()
     
     console.print(f"[green]✓ Configuration updated[/green]")
@@ -161,7 +161,7 @@ def create(
     """Create new Resolve project in library workspace"""
     
     if library_path is None:
-        library_path = Path("/mnt/library")
+        library_path = Path("/mnt/studio")
     
     if not library_path.exists():
         console.print(f"[yellow]Library not initialized. Run:[/yellow] [cyan]sf library init[/cyan]")
@@ -219,7 +219,7 @@ def projects(
     """List all projects in library"""
     
     if library_path is None:
-        library_path = Path("/mnt/library")
+        library_path = Path("/mnt/studio")
     
     if not library_path.exists():
         console.print(f"[red]Library path does not exist: {library_path}[/red]")
@@ -288,7 +288,7 @@ def optimize(
     """Optimize library workspace (cleanup, organize)"""
     
     if library_path is None:
-        library_path = Path("/mnt/library")
+        library_path = Path("/mnt/studio")
     
     console.print(f"Optimizing library at [cyan]{library_path}[/cyan]...")
     

@@ -72,7 +72,7 @@ def import_media(
                 continue
 
         # Copy to project (simplified - just copy to Media folder)
-        dest = Path.cwd() / "01_Media" / file.name
+        dest = Path.cwd() / "01_MEDIA" / file.name
         dest.parent.mkdir(parents=True, exist_ok=True)
 
         try:

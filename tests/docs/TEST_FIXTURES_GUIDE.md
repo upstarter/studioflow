@@ -395,3 +395,4 @@ Shutter: 1/60s
 - Standard filenaming convention
 - Organize in `tests/fixtures/test_footage/`
 
+

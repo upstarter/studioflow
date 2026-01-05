@@ -29,7 +29,7 @@
 **Status:** ✅ Working
 
 **Current Path:** `/mnt/nas/Scratch/Ingest/{date}/`
-**Expected Path:** `/mnt/library/PROJECTS/{project_name}/01_Media/Original/`
+**Expected Path:** `/mnt/studio/PROJECTS/{project_name}/01_Media/Original/`
 
 **⚠️ Gap:** Files go to ingest pool, not directly to project
 
@@ -58,11 +58,11 @@
 **Status:** ⚠️ Works but not automatically triggered by auto-import
 
 **Current Path:** Uses `config.storage.active` (defaults to `~/StudioFlow/Projects/`)
-**Expected Path:** `/mnt/library/PROJECTS/{project_name}/`
+**Expected Path:** `/mnt/studio/PROJECTS/{project_name}/`
 
 **⚠️ Gap:** 
 - Auto-import doesn't create project automatically
-- Path doesn't match `/mnt/library/PROJECTS/`
+- Path should use `/mnt/studio/PROJECTS/`
 
 ---
 
@@ -171,7 +171,7 @@
    ↓
 4. Normalize audio (-14 LUFS)
    ↓
-5. Create/use project in /mnt/library/PROJECTS/
+5. Create/use project in /mnt/studio/PROJECTS/
    ↓
 6. Generate proxies
    ↓
@@ -206,7 +206,7 @@
 
 ### ⚠️ What's Missing:
 1. **Automatic project creation** from auto-import
-2. **Path configuration** to `/mnt/library/PROJECTS/`
+2. **Path configuration** to `/mnt/studio/PROJECTS/`
 3. **Normalization** during import
 4. **Transcription** during import
 5. **Audio marker detection** during import
@@ -268,7 +268,7 @@ sf publish all
 
 **Change:**
 - Add `library_path` to config
-- Default to `/mnt/library/PROJECTS/`
+- Default to `/mnt/studio/PROJECTS/`
 - Use for all project creation
 
 ### 3. Render Cache Assembly
@@ -320,4 +320,5 @@ sf publish all
 8. Test end-to-end
 
 **Estimated Effort:** 2-3 days to build complete pipeline
+
 

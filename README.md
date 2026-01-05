@@ -123,6 +123,9 @@ Comprehensive documentation is available in the `docs/` directory:
 - [**YouTube Episode Guide**](docs/YOUTUBE_EPISODE_GUIDE.md) ⭐ **START HERE** - Complete workflow for creating YouTube tutorial episodes
 - [**Filename Convention**](docs/FILENAME_CONVENTION.md) - How to name files for automatic optimization
 - [**Hook Flows Guide**](docs/YOUTUBE_HOOK_FLOWS.md) - YouTube hook patterns for maximum retention
+- [**Fixture Creation Guide**](docs/FIXTURE_CREATION_GUIDE.md) - How to create comprehensive test footage
+- [**Production Fixture Spec**](tests/docs/PRODUCTION_FIXTURE_FOOTAGE.md) - Production-grade fixture (5-10 min, 45+ segments)
+- [**Segment Ending Guide**](docs/SEGMENT_ENDING_GUIDE.md) - How segments end automatically
 
 ### Reference
 - [**User Guide**](docs/USER_GUIDE.md) - Complete user documentation with all commands
@@ -132,6 +135,10 @@ Comprehensive documentation is available in the `docs/` directory:
 - [**AI Features**](docs/AI_FEATURES.md) - AI-powered features and capabilities
 - [**Roadmap**](docs/ROADMAP.md) - Future plans and development roadmap
 
+### Testing
+- [**Ultimate Fixture Specification**](tests/docs/ULTIMATE_FIXTURE_FOOTAGE.md) - Complete test fixture specification
+- Run all tests: `./run_tests.sh` or `pytest tests/`
+
 ## 🛠️ Configuration
 
 > **📖 See [docs/STORAGE_PATHS.md](docs/STORAGE_PATHS.md) for complete storage paths reference.**
@@ -140,16 +147,14 @@ StudioFlow uses a simple YAML configuration file at `~/.studioflow/config.yaml`:
 
 ```yaml
 storage:
-  # Library defaults to /mnt/library in CLI commands
-  # Other paths default to ~/Videos/StudioFlow/* for portability
-  library: /mnt/library            # Recommended: dedicated drive for Resolve projects
-  active: /mnt/studio/Projects     # Current working projects
+  # Production storage paths
+  active: /mnt/studio/PROJECTS     # Current working projects
   ingest: /mnt/ingest              # SD card dumps
   archive: /mnt/archive            # Completed projects
   
   # Optional: Separate cache/proxy for better performance
   cache: /mnt/cache                # Fast disk for cache
-  proxy: /mnt/cache/Proxies         # Proxy files on cache disk
+  proxy: /mnt/cache/Proxies        # Proxy files on cache disk
 
 youtube:
   api_key: your-api-key
@@ -161,13 +166,14 @@ resolve:
 ```
 
 **Note:** 
-- Library path defaults to `/mnt/library` in CLI commands (can be overridden in config)
+- Production storage defaults to `/mnt/studio/PROJECTS` (can be overridden in config)
 - Other paths default to `${HOME}/Videos/StudioFlow/*` for portability
+- Test outputs go to `/mnt/dev/studioflow/tests/output/` (not production storage)
 - Override in your config file for custom locations
 
 ### Optional Features
 
-- **Power Bins**: Configure `storage.nas` or `storage.library` to enable Power Bins for stock footage organization
+- **Power Bins**: Configure `storage.nas` to enable Power Bins for stock footage organization
 - **Advanced Commands**: Use `sf --all` to see all available commands
 
 ## 🤝 Contributing

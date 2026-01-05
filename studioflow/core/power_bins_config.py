@@ -28,8 +28,8 @@ class PowerBinsConfig:
                 return nas_media
         
         # Fallback to local library/assets if available
-        if config.storage.library:
-            library_assets = config.storage.library / "Assets"
+        if config.storage.studio:
+            library_assets = config.storage.studio / "Assets"
             if library_assets.exists():
                 return library_assets
         

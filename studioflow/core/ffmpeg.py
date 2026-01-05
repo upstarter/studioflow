@@ -112,9 +112,14 @@ class FFmpegProcessor:
         # Use fast seek for cutting (may be slightly inaccurate at boundaries)
         # For precise cuts, use reencode=True
         if reencode:
-            # Use GPU acceleration if available
-            gpu = get_gpu_detector()
-            encoder, preset = gpu.get_video_encoder()
+            # Try GPU acceleration if available, fallback to CPU
+            try:
+                from studioflow.core.gpu_detector import get_gpu_detector
+                gpu = get_gpu_detector()
+                encoder, preset = gpu.get_video_encoder()
+            except (ImportError, AttributeError, Exception):
+                # Fallback to CPU encoder
+                encoder, preset = "libx264", "medium"
             
             cmd = [
                 "ffmpeg", "-i", str(input_file),
@@ -131,10 +136,12 @@ class FFmpegProcessor:
             elif encoder.startswith("h264_qsv"):
                 cmd.extend(["-preset", preset, "-global_quality", "23"])
             else:
-                # CPU fallback
-                cmd.extend(["-preset", preset, "-crf", "23"])
+                # CPU fallback (libx264)
+                # Convert 10-bit 4:2:2 to 8-bit 4:2:0 for compatibility
+                # Add pixel format filter if needed (handled by FFmpeg automatically, but explicit is better)
+                cmd.extend(["-pix_fmt", "yuv420p", "-preset", preset, "-crf", "23"])
             
-            cmd.extend(["-c:a", "aac", "-y", str(output_file)])
+            cmd.extend(["-c:a", "aac", "-b:a", "192k", "-y", str(output_file)])
         else:
             # Fast copy mode - seeks to nearest keyframe
             cmd = [
@@ -160,10 +167,19 @@ class FFmpegProcessor:
                 file_size_mb=size_mb
             )
         except subprocess.CalledProcessError as e:
+            # Clean up empty output file if FFmpeg failed
+            if output_file.exists() and output_file.stat().st_size == 0:
+                try:
+                    output_file.unlink()
+                except OSError:
+                    pass  # Ignore cleanup errors
+            
             suggestion = "Try with reencode=True for precise cuts" if not reencode else "Check if timestamps are within video duration"
+            error_msg = e.stderr if e.stderr else str(e)
+            # Include full error (not just first 200 chars) for debugging
             return ProcessResult(
                 success=False,
-                error_message=e.stderr[:200] if e.stderr else str(e),
+                error_message=error_msg[:500] if len(error_msg) > 500 else error_msg,
                 suggestion=suggestion
             )
 
@@ -771,6 +787,7 @@ class FFmpegProcessor:
                 "ffmpeg", "-i", str(input_file),
                 "-af", filter,
                 "-c:v", "copy",  # Keep video unchanged
+                "-c:a", "aac", "-b:a", "192k",  # Encode audio to AAC
                 "-y", str(output_file)
             ]
 

@@ -98,37 +98,36 @@ StudioFlow uses a flexible storage system that supports both portable defaults (
 1. **Ingest** - Raw footage from cameras/SD cards
    - Default: `/mnt/ingest` (StorageTierSystem) or `~/Videos/StudioFlow/Ingest` (config)
 2. **Active** - Current working projects
-   - Default: `/mnt/studio/Projects` (StorageTierSystem) or `~/Videos/StudioFlow/Projects` (config)
-3. **Library** - Organized Resolve projects, reusable assets
-   - Default: `/mnt/library` (CLI commands) or `~/Videos/StudioFlow/Library` (config fallback)
-4. **Cache** - Resolve cache files (fast disk preferred)
-   - Default: `{library}/CACHE` (inside library) or `/mnt/cache` (if configured separately)
-5. **Proxies** - Proxy media files (fast disk preferred)
-   - Default: `{library}/PROXIES` (inside library) or `/mnt/cache/Proxies` (if configured separately)
-6. **Archive** - Completed projects, long-term storage
+   - Default: `/mnt/studio/PROJECTS` (StorageTierSystem) or `~/Videos/StudioFlow/Projects` (config)
+3. **Cache** - Resolve cache files (fast disk preferred)
+   - Default: `/mnt/cache` (if configured) or `{active}/.cache`
+4. **Proxies** - Proxy media files (fast disk preferred)
+   - Default: `/mnt/cache/Proxies` (if configured) or `{active}/.proxies`
+5. **Archive** - Completed projects, long-term storage
    - Default: `/mnt/archive` (StorageTierSystem) or `~/Videos/StudioFlow/Archive` (config)
 
-### Library Structure
+### Project Structure
 
-The library directory (default: `/mnt/library`) contains:
+Active projects are stored in `/mnt/studio/PROJECTS/`:
 
 ```
-{library_path}/
-├── PROJECTS/           # Resolve project files
-│   ├── DOCS/          # Documentary projects
-│   ├── EPISODES/      # Episode projects
-│   └── FILMS/         # Film projects
-├── CACHE/             # Resolve cache files (default location)
-├── PROXIES/           # Proxy media files (default location)
-├── EXPORTS/           # Final exports
-│   ├── YOUTUBE/
-│   ├── INSTAGRAM/
-│   └── TIKTOK/
-└── ASSETS/            # Reusable assets
-    ├── MUSIC/
-    ├── SFX/
-    ├── GRAPHICS/
-    └── LUTS/
+/mnt/studio/PROJECTS/
+├── {project_name}/     # Individual project directories
+│   ├── 01_Media/      # Original and normalized media
+│   ├── 02_Transcription/  # Transcripts
+│   ├── 03_Segments/   # Extracted segments
+│   └── 04_Timelines/  # Rough cut EDLs
+```
+
+Test outputs are stored in `/mnt/dev/studioflow/tests/output/`:
+
+```
+tests/output/
+├── unified_pipeline/   # Unified import pipeline test outputs
+│   ├── projects/      # Full test project structures
+│   └── summaries/     # Test summary JSON files
+├── e2e_test_runs/     # End-to-end test run outputs (timestamped)
+└── legacy/            # Old test projects (for reference)
 ```
 
 ### Path Resolution Logic
@@ -136,19 +135,19 @@ The library directory (default: `/mnt/library`) contains:
 The application uses this priority order for path resolution:
 
 1. **User config** (`~/.studioflow/config.yaml`) - Highest priority
-2. **Code defaults** (hardcoded in CLI commands) - `/mnt/library` for library
+2. **Code defaults** (StorageTierSystem) - `/mnt/studio/PROJECTS` for active storage
 3. **Config system defaults** - `~/Videos/StudioFlow/*` for other paths
 
-**Example for library path**:
+**Example for active storage**:
 ```python
-# In CLI commands (library.py, resolve_api.py)
-library_path = config.storage.library or Path("/mnt/library")
+# In unified_import.py, project.py
+active_path = config.storage.active  # Defaults to /mnt/studio/PROJECTS
 ```
 
-**Example for other paths**:
+**Example for test outputs**:
 ```python
-# In config.py
-active_path = config.storage.active  # Defaults to ~/Videos/StudioFlow/Projects
+# In tests (test_unified_pipeline_fixtures.py, conftest.py)
+test_output = Path(__file__).parent / "tests" / "output" / "unified_pipeline"
 ```
 
 ### Cache/Proxy Configuration
@@ -160,10 +159,9 @@ Cache and proxy files can be separated from the library for better performance:
 - **Configuration**: Set in `~/.studioflow/config.yaml`:
   ```yaml
   storage:
-    library: /mnt/library          # Recommended for Resolve projects
-    active: /mnt/studio/Projects    # Current working projects
-    ingest: /mnt/ingest             # SD card dumps
-    archive: /mnt/archive           # Completed projects
+    active: /mnt/studio/PROJECTS   # Current working projects
+    ingest: /mnt/ingest            # SD card dumps
+    archive: /mnt/archive          # Completed projects
     cache: /mnt/cache              # Fast disk for cache (optional)
     proxy: /mnt/cache/Proxies      # Proxy files on cache disk (optional)
   ```

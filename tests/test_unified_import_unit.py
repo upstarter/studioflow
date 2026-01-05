@@ -136,8 +136,8 @@ class TestLibraryPathHandling:
         library_path.mkdir(parents=True)
         
         # Temporarily set library path in config
-        original_library = config.storage.library
-        config.storage.library = library_path
+        original_library = config.storage.studio
+        config.storage.studio = library_path
         
         try:
             project = Project("test_library_project", path=None)
@@ -145,15 +145,15 @@ class TestLibraryPathHandling:
             # Project should be created in library path
             assert project.path.parent == library_path
         finally:
-            config.storage.library = original_library
+            config.storage.studio = original_library
     
     def test_project_fallback_to_active_storage(self, temp_project_dir):
         """Test project falls back to active storage if library doesn't exist"""
         config = get_config()
         
         # Set library to non-existent path
-        original_library = config.storage.library
-        config.storage.library = Path("/nonexistent/library")
+        original_library = config.storage.studio
+        config.storage.studio = Path("/nonexistent/studio")
         
         try:
             project = Project("test_fallback_project", path=None)
@@ -161,7 +161,7 @@ class TestLibraryPathHandling:
             # Project should be in active storage
             assert project.path.parent == config.storage.active
         finally:
-            config.storage.library = original_library
+            config.storage.studio = original_library
     
     def test_project_handles_library_with_projects_suffix(self, temp_project_dir):
         """Test project handles library path that already includes PROJECTS"""
@@ -171,8 +171,8 @@ class TestLibraryPathHandling:
         library_path = temp_project_dir / "library" / "PROJECTS"
         library_path.mkdir(parents=True)
         
-        original_library = config.storage.library
-        config.storage.library = library_path
+        original_library = config.storage.studio
+        config.storage.studio = library_path
         
         try:
             project = Project("test_projects_suffix", path=None)
@@ -180,7 +180,7 @@ class TestLibraryPathHandling:
             # Should use library_path directly (not append PROJECTS again)
             assert project.path.parent == library_path
         finally:
-            config.storage.library = original_library
+            config.storage.studio = original_library
 
 
 @pytest.mark.unit
@@ -214,7 +214,7 @@ class TestPhasedProcessing:
         assert count == 2, "Should import 2 files"
         
         # Verify files copied
-        media_dir = project_path / "01_Media" / "Original" / "FX30"
+        media_dir = project_path / "01_MEDIA" / "Original" / "FX30"
         assert media_dir.exists()
         assert (media_dir / "test1.mp4").exists()
         assert (media_dir / "test2.mov").exists()
@@ -226,7 +226,7 @@ class TestPhasedProcessing:
         # Create project structure
         project_path = temp_project_dir / "test_project"
         project_path.mkdir(parents=True)
-        normalized_dir = project_path / "01_Media" / "Normalized"
+        normalized_dir = project_path / "01_MEDIA" / "Normalized"
         normalized_dir.mkdir(parents=True)
         
         # Create existing normalized file
@@ -273,7 +273,7 @@ class TestPhasedProcessing:
             count = pipeline._generate_proxies([video_file], project_path, profile)
             
             # Verify proxy directory created
-            proxy_dir = project_path / "01_Media" / "Proxy"
+            proxy_dir = project_path / "01_MEDIA" / "Proxy"
             assert proxy_dir.exists()
 
 

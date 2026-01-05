@@ -72,7 +72,7 @@ class UserUtils:
 
         # Get recent files (last 24 hours)
         if status.current_project:
-            media_dir = status.current_project / "01_Media"
+            media_dir = status.current_project / "01_MEDIA"
             if media_dir.exists():
                 cutoff = datetime.now() - timedelta(hours=24)
                 for file in media_dir.rglob("*.mp4"):

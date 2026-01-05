@@ -46,15 +46,20 @@ If you need to create new test fixtures:
 
 ## Test Output
 
-Test output is stored in `tests/output/` and is also excluded from git. Each test run creates a timestamped directory:
+Test output is stored in `/mnt/dev/studioflow/tests/output/` and is also excluded from git. The structure is organized as follows:
 
 ```
 tests/output/
-  test_run_20260104_123456/
-    segments/
-    transcripts/
-    normalized/
-    project_structure/
+  unified_pipeline/          # Unified import pipeline test outputs
+    projects/               # Full test project structures
+    summaries/              # Test summary JSON files
+  e2e_test_runs/            # End-to-end test run outputs (timestamped)
+    test_run_YYYYMMDD_HHMMSS/
+      segments/
+      transcripts/
+      normalized/
+      project_output/
+  legacy/                   # Old test projects (for reference)
 ```
 
 ## Running Tests Without Fixtures
@@ -90,4 +95,5 @@ For production use:
 - Store test fixtures on NAS: `/mnt/nas/Scratch/Ingest/YYYY-MM-DD/fixtures/`
 - Keep local copies in `tests/fixtures/test_footage/` for development
 - Don't commit large files to git (already configured in `.gitignore`)
+
 
