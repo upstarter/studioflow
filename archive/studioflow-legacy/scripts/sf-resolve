@@ -1,0 +1,962 @@
+#!/usr/bin/env python3
+"""
+sf-resolve - Ultra-optimized DaVinci Resolve template generator for YouTube
+Maximizes quality through multi-tier export strategy and optimal settings
+"""
+
+import sys
+import json
+import os
+import subprocess
+from pathlib import Path
+from datetime import datetime
+
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import Project, JsonStream, find_project, CliHelper
+
+# ==============================
+# ULTRA-OPTIMAL YOUTUBE SETTINGS
+# ==============================
+
+# Based on 2024-2025 YouTube codec assignment research
+YOUTUBE_QUALITY_MATRIX = {
+    "4k30_master": {
+        "resolution": (3840, 2160),
+        "fps": 29.97,
+        "codec_trigger": "Always VP9/AV1",  # 4K always gets premium codec
+        "target_bitrate": 45,  # Mbps - YouTube's VP9 efficiency point
+        "max_bitrate": 68,     # Mbps - Beyond this is wasted
+        "buffer_size": 136,    # 2x max for quality spikes
+        "color_depth": "10bit", # Reduces banding
+        "chroma": "4:2:0",     # YouTube doesn't preserve 4:2:2
+        "audio_lufs": -14.0,   # YouTube's exact target
+        "true_peak": -1.0,     # Prevent clipping
+        "strategy": "Upload at 4K even if source is 1080p for VP9 assignment"
+    },
+    "1440p30_fallback": {
+        "resolution": (2560, 1440),
+        "fps": 29.97,
+        "codec_trigger": "VP9 with views OR high bitrate",
+        "target_bitrate": 24,
+        "max_bitrate": 30,
+        "buffer_size": 60,
+        "color_depth": "10bit",
+        "chroma": "4:2:0",
+        "audio_lufs": -14.0,
+        "true_peak": -1.0,
+        "strategy": "Good middle ground for 1080p content"
+    },
+    "1080p30_proxy": {
+        "resolution": (1920, 1080),
+        "fps": 29.97,
+        "codec_trigger": "Usually AVC (needs high views for VP9)",
+        "target_bitrate": 12,
+        "max_bitrate": 16,
+        "buffer_size": 32,
+        "color_depth": "8bit",
+        "chroma": "4:2:0",
+        "audio_lufs": -14.0,
+        "true_peak": -1.0,
+        "strategy": "Only for quick previews, not final upload"
+    }
+}
+
+# FX30 Camera Pipeline (Your Setup)
+FX30_PROFILES = {
+    "scinetone_rec709": {
+        "description": "S-Cinetone - Ready to use, minor adjustments",
+        "input_color_space": "Rec.709",
+        "input_gamma": "Rec.709",
+        "timeline_color_space": "Rec.709",
+        "timeline_gamma": "Rec.709",
+        "output_color_space": "Rec.709",
+        "output_gamma": "Rec.709",
+        "nodes": [
+            {"type": "Primary", "contrast": 1.05, "saturation": 1.08},
+            {"type": "Curves", "adjustments": "slight_s_curve"}
+        ]
+    },
+    "slog3_workflow": {
+        "description": "S-Log3 - Maximum flexibility, needs grading",
+        "input_color_space": "S-Gamut3.Cine",
+        "input_gamma": "S-Log3",
+        "timeline_color_space": "DaVinci Wide Gamut",
+        "timeline_gamma": "DaVinci Intermediate",
+        "output_color_space": "Rec.709",
+        "output_gamma": "Rec.709",
+        "lut_options": [
+            "/mnt/nas/Archive/Projects/Scripts/fx30_endure_luts_bundle/fx30_endure_neutral.cube",
+            "/mnt/nas/Archive/Projects/Scripts/fx30_endure_luts_bundle/fx30_endure_utopia.cube"
+        ],
+        "nodes": [
+            {"type": "CST", "purpose": "Input to Working"},
+            {"type": "LUT", "purpose": "Base look"},
+            {"type": "Primary", "purpose": "Fine tuning"},
+            {"type": "CST", "purpose": "Working to Output"}
+        ]
+    }
+}
+
+# Multi-tier Export Strategy
+EXPORT_TIERS = {
+    "tier0_master": {
+        "name": "Archive Master",
+        "purpose": "Highest quality for future re-exports",
+        "format": "mov",
+        "codec": "dnxhr_444",  # or "prores_4444"
+        "color_depth": "12bit",
+        "chroma": "4:4:4",
+        "compression": "lossless",
+        "audio": "pcm_s24le",
+        "when": "After final color grade"
+    },
+    "tier1_youtube_av1": {
+        "name": "YouTube AV1 Upload",
+        "purpose": "Maximum YouTube quality",
+        "format": "mp4",
+        "codec": "av1",
+        "encoder": "libsvtav1",
+        "preset": 4,  # Balance of speed/quality
+        "crf": 18,    # High quality (lower = better)
+        "color_depth": "10bit",
+        "chroma": "4:2:0",
+        "audio": "opus",
+        "audio_bitrate": 256,
+        "when": "Primary upload"
+    },
+    "tier2_youtube_h265": {
+        "name": "YouTube H.265 Fallback",
+        "purpose": "If AV1 encoding fails",
+        "format": "mp4",
+        "codec": "hevc",
+        "encoder": "libx265",
+        "preset": "slow",
+        "crf": 16,
+        "color_depth": "10bit",
+        "chroma": "4:2:0",
+        "audio": "aac",
+        "audio_bitrate": 320,
+        "when": "Fallback upload"
+    },
+    "tier3_platforms": {
+        "youtube_shorts": {
+            "resolution": (1080, 1920),
+            "aspect": "9:16",
+            "duration_max": 60,
+            "codec": "h264",
+            "bitrate": 10
+        },
+        "instagram_reels": {
+            "resolution": (1080, 1920),
+            "aspect": "9:16",
+            "duration_max": 90,
+            "codec": "h264",
+            "bitrate": 8
+        },
+        "tiktok": {
+            "resolution": (1080, 1920),
+            "aspect": "9:16",
+            "duration_max": 180,
+            "codec": "h264",
+            "bitrate": 8
+        }
+    }
+}
+
+class UltraResolveTemplate:
+    """Maximum quality Resolve configuration generator"""
+
+    def __init__(self, project: Project):
+        self.project = project
+        self.config_dir = project.path / ".studioflow" / "resolve"
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+
+    def generate_complete_config(self):
+        """Generate complete ultra-optimized configuration"""
+
+        config = {
+            "metadata": {
+                "generated": datetime.now().isoformat(),
+                "version": "2.0",
+                "optimization": "Maximum YouTube Quality"
+            },
+            "project_settings": self.generate_project_settings(),
+            "timeline_config": self.generate_timeline_config(),
+            "color_management": self.generate_color_config(),
+            "audio_config": self.generate_audio_config(),
+            "render_presets": self.generate_render_presets(),
+            "export_commands": self.generate_export_commands(),
+            "workflow_automation": self.generate_automation_scripts()
+        }
+
+        return config
+
+    def generate_project_settings(self):
+        """Optimal project configuration"""
+
+        master = YOUTUBE_QUALITY_MATRIX["4k30_master"]
+
+        return {
+            "name": f"{self.project.name}_YouTube_4K",
+            "resolution": {
+                "width": master["resolution"][0],
+                "height": master["resolution"][1],
+                "pixel_aspect": 1.0
+            },
+            "framerate": master["fps"],
+            "interlaced": False,
+            "color": {
+                "bit_depth": 10,
+                "science": "DaVinci YRGB Color Managed",
+                "timeline_lum": 100,
+                "timeline_color_space": "Rec.709-A",
+                "output_color_space": "Rec.709-A",
+                "use_separate_color_space_and_gamma": True
+            },
+            "audio": {
+                "sample_rate": 48000,
+                "bit_depth": 24,
+                "monitoring_latency": 1024,
+                "render_latency": 4096
+            },
+            "working_folders": {
+                "cache": str(self.project.path / "04_EDIT" / "CACHE"),
+                "gallery_stills": str(self.project.path / "04_EDIT" / "STILLS"),
+                "capture": str(self.project.path / "01_FOOTAGE" / "CAPTURE")
+            },
+            "performance": {
+                "mode": "Manual",
+                "decode_h264_h265_using": "Hardware",
+                "decode_options": {
+                    "decode_h264_using_hardware": True,
+                    "decode_h265_using_hardware": True,
+                    "hardware_decode_easy": True
+                },
+                "render_cache": {
+                    "mode": "Smart",
+                    "format": "DNxHR SQ",
+                    "quality": "Automatic"
+                },
+                "optimized_media": {
+                    "resolution": "Half",
+                    "format": "DNxHR SQ",
+                    "quality": "Automatic"
+                },
+                "proxy_media": {
+                    "resolution": "Quarter",
+                    "format": "H.264",
+                    "quality": "Automatic"
+                },
+                "gpu_configuration": {
+                    "gpu_selection": "Auto",
+                    "gpu_mode": "CUDA",  # or "OpenCL" or "Metal"
+                    "enable_multiple_gpus": True
+                }
+            }
+        }
+
+    def generate_timeline_config(self):
+        """Optimized timeline structure"""
+
+        return {
+            "name": "Main_Edit",
+            "start_tc": "01:00:00:00",
+            "video_tracks": 6,
+            "audio_tracks": 8,
+            "track_names": {
+                "video": {
+                    "V6": "Graphics/Titles",
+                    "V5": "Fusion Comps",
+                    "V4": "Overlays",
+                    "V3": "B-Roll",
+                    "V2": "Screen Recording",
+                    "V1": "A-Roll Main"
+                },
+                "audio": {
+                    "A1-A2": "Dialogue (Stereo)",
+                    "A3-A4": "Music (Stereo)",
+                    "A5": "SFX",
+                    "A6": "Room Tone",
+                    "A7-A8": "Backup/Alt"
+                }
+            },
+            "edit_sizing": "Scale Full Frame with Crop",
+            "video_monitoring": "Cinema Viewer",
+            "audio_monitoring": "Stereo",
+            "track_heights": {
+                "V1": "Large",
+                "V2": "Large",
+                "V3": "Medium",
+                "V4": "Medium",
+                "V5": "Small",
+                "V6": "Small",
+                "A1-A2": "Large",
+                "A3-A4": "Medium",
+                "A5-A8": "Small"
+            }
+        }
+
+    def generate_color_config(self):
+        """FX30-optimized color pipeline"""
+
+        return {
+            "input_profile": "FX30 S-Cinetone",
+            "color_management": {
+                "type": "DaVinci YRGB Color Managed",
+                "auto_color_management": False,
+                "timeline_color_space": "Rec.709-A",
+                "timeline_gamma": "Gamma 2.4",
+                "input_color_space": "Rec.709",
+                "input_gamma": "Gamma 2.4",
+                "output_color_space": "Rec.709",
+                "output_gamma": "Gamma 2.4",
+                "use_bgr_pixel_order_for_dpx": False,
+                "use_10bit_precision_for_yrgb": True,
+                "use_enhanced_viewer_pipeline": True
+            },
+            "youtube_optimization": {
+                "lift": {"luma": 0.0, "r": 0.0, "g": 0.0, "b": 0.002},
+                "gamma": {"luma": 1.0, "r": 1.0, "g": 1.0, "b": 1.0},
+                "gain": {"luma": 1.0, "r": 1.01, "g": 1.0, "b": 0.99},
+                "contrast": 1.05,
+                "pivot": 0.435,
+                "saturation": 1.08,
+                "hue": 0,
+                "temperature": 50,
+                "tint": 0,
+                "midtone_detail": 0.0,
+                "highlight_recovery": True,
+                "shadow_recovery": 0.1
+            },
+            "node_structure": [
+                {"label": "Input Transform", "type": "Serial", "enabled": True},
+                {"label": "Primary Grade", "type": "Serial", "enabled": True},
+                {"label": "YouTube Enhance", "type": "Serial", "enabled": True},
+                {"label": "Skin Tones", "type": "Parallel", "enabled": True},
+                {"label": "Output Transform", "type": "Serial", "enabled": True}
+            ]
+        }
+
+    def generate_audio_config(self):
+        """YouTube-optimized audio settings"""
+
+        return {
+            "fairlight_config": {
+                "sample_rate": 48000,
+                "bit_depth": 24,
+                "monitoring_dim": -20,
+                "reference_level": -20
+            },
+            "bus_format": "Stereo",
+            "bus_configuration": {
+                "main": {
+                    "format": "Stereo",
+                    "processing": {
+                        "dynamics": {
+                            "enabled": True,
+                            "type": "Compressor",
+                            "threshold": -18,
+                            "ratio": "3:1",
+                            "attack": 10,
+                            "hold": 0,
+                            "release": 100,
+                            "makeup_gain": "Auto",
+                            "knee": 2.0
+                        },
+                        "eq": {
+                            "enabled": True,
+                            "high_pass": 80,
+                            "presence_boost": {"freq": 3500, "gain": 1.5, "q": 0.7}
+                        },
+                        "limiter": {
+                            "enabled": True,
+                            "ceiling": -0.3,
+                            "release": 50,
+                            "lookahead": 5
+                        },
+                        "loudness": {
+                            "enabled": True,
+                            "standard": "YouTube",
+                            "target_loudness": -14.0,
+                            "target_max_true_peak": -1.0,
+                            "loudness_range": 7.0,
+                            "program_loudness": True
+                        }
+                    }
+                },
+                "submix": {
+                    "dialogue": {"send_level": 0, "processing": "Voice Isolation"},
+                    "music": {"send_level": -6, "processing": "None"},
+                    "sfx": {"send_level": -3, "processing": "None"}
+                }
+            }
+        }
+
+    def generate_render_presets(self):
+        """Multi-tier render configuration"""
+
+        presets = {}
+
+        # Tier 0: Archive Master
+        presets["archive_master"] = {
+            "name": "Archive Master (Future-proof)",
+            "format": "QuickTime",
+            "codec": "DNxHR 444 12-bit",
+            "resolution": "Timeline",
+            "frame_rate": "Timeline",
+            "quality": "Best",
+            "encode_profile": "Automatic",
+            "key_frames": "All Frames",
+            "data_levels": "Full",
+            "data_burn_in": None,
+            "audio_codec": "Linear PCM",
+            "audio_bit_depth": "32 Float",
+            "audio_sample_rate": 48000,
+            "render_speed": "Better Quality",
+            "use_optimized_media": False,
+            "use_render_cached_images": False
+        }
+
+        # Tier 1: YouTube AV1
+        presets["youtube_av1_4k"] = {
+            "name": "YouTube 4K AV1 (Maximum Quality)",
+            "custom_export": True,
+            "custom_command": self.generate_av1_export_command()
+        }
+
+        # Tier 2: YouTube H.265
+        presets["youtube_h265_4k"] = {
+            "name": "YouTube 4K H.265 (Fallback)",
+            "format": "MP4",
+            "codec": "H.265",
+            "resolution": "3840x2160",
+            "frame_rate": "29.97",
+            "quality": "Restrict to",
+            "data_rate": 50000,  # 50 Mbps
+            "max_data_rate": 68000,  # 68 Mbps
+            "encode_profile": "Main10",
+            "key_frames": 60,
+            "frame_reordering": True,
+            "audio_codec": "AAC",
+            "audio_data_rate": 320,
+            "audio_sample_rate": 48000
+        }
+
+        return presets
+
+    def generate_av1_export_command(self):
+        """Ultra-optimized AV1 ffmpeg command"""
+
+        return """#!/bin/bash
+# Ultra-Quality AV1 Export for YouTube
+
+INPUT="$1"
+OUTPUT="${INPUT%.*}_YOUTUBE_AV1.mp4"
+
+echo "🎬 Starting Ultra-Quality AV1 Export..."
+
+ffmpeg -i "$INPUT" \\
+    -c:v libsvtav1 \\
+    -pix_fmt yuv420p10le \\
+    -preset 4 \\
+    -crf 18 \\
+    -g 60 \\
+    -keyint_min 60 \\
+    -sc_threshold 0 \\
+    -b:v 45M \\
+    -maxrate 68M \\
+    -bufsize 136M \\
+    -svtav1-params "\\
+tune=0:\\
+film-grain=8:\\
+film-grain-denoise=0:\\
+enable-qm=1:\\
+qm-min=0:\\
+qm-max=15:\\
+enable-tf=1:\\
+enable-overlays=1:\\
+scd=1:\\
+lookahead=120:\\
+hierarchical-levels=4:\\
+tile-rows=2:\\
+tile-columns=2" \\
+    -row-mt 1 \\
+    -cpu-used 4 \\
+    -color_primaries bt709 \\
+    -color_trc bt709 \\
+    -colorspace bt709 \\
+    -color_range tv \\
+    -vf "scale=3840:2160:flags=lanczos+accurate_rnd+full_chroma_int+full_chroma_inp,\\
+         format=yuv420p10le,\\
+         eq=gamma=1.0:saturation=1.0,\\
+         unsharp=5:5:0.5:5:5:0.0" \\
+    -map_metadata 0 \\
+    -movflags +faststart \\
+    -c:a libopus \\
+    -b:a 256k \\
+    -ar 48000 \\
+    -ac 2 \\
+    -compression_level 10 \\
+    -frame_duration 20 \\
+    -application audio \\
+    -vbr on \\
+    -mapping_family 0 \\
+    -af "loudnorm=I=-14:TP=-1:LRA=7:print_format=json" \\
+    -metadata title="YouTube Upload" \\
+    -metadata comment="Optimized for YouTube" \\
+    -metadata encoder="StudioFlow Ultra" \\
+    "$OUTPUT"
+
+echo "✅ Export complete: $OUTPUT"
+ls -lh "$OUTPUT"
+"""
+
+    def generate_export_commands(self):
+        """Generate all export tier commands"""
+
+        commands = {}
+
+        # YouTube Shorts/Vertical
+        commands["youtube_shorts"] = """
+ffmpeg -i "$INPUT" \\
+    -vf "crop=ih*9/16:ih,scale=1080:1920,fps=30" \\
+    -c:v libx264 -preset slow -crf 18 \\
+    -b:v 10M -maxrate 12M -bufsize 24M \\
+    -c:a aac -b:a 256k -ar 48000 \\
+    -t 59 \\
+    "${OUTPUT}_SHORTS.mp4"
+"""
+
+        # Instagram Reels
+        commands["instagram_reels"] = """
+ffmpeg -i "$INPUT" \\
+    -vf "crop=ih*9/16:ih,scale=1080:1920,fps=30" \\
+    -c:v libx264 -preset slow -crf 20 \\
+    -b:v 8M -maxrate 10M -bufsize 20M \\
+    -c:a aac -b:a 128k -ar 44100 \\
+    -t 90 \\
+    "${OUTPUT}_INSTAGRAM.mp4"
+"""
+
+        # TikTok
+        commands["tiktok"] = """
+ffmpeg -i "$INPUT" \\
+    -vf "crop=ih*9/16:ih,scale=1080:1920,fps=30" \\
+    -c:v libx264 -preset medium -crf 22 \\
+    -b:v 6M -maxrate 8M -bufsize 16M \\
+    -c:a aac -b:a 128k -ar 44100 \\
+    -t 180 \\
+    "${OUTPUT}_TIKTOK.mp4"
+"""
+
+        return commands
+
+    def generate_automation_scripts(self):
+        """Generate workflow automation"""
+
+        scripts = {}
+
+        # Complete export pipeline
+        scripts["export_all_tiers.sh"] = """#!/bin/bash
+# Complete Multi-Tier Export Pipeline
+
+PROJECT_NAME="$1"
+SOURCE_FILE="$2"
+OUTPUT_DIR="05_EXPORT"
+
+echo "🎬 ULTRA-QUALITY EXPORT PIPELINE"
+echo "================================"
+
+# Create output directory structure
+mkdir -p "$OUTPUT_DIR"/{Master,YouTube,Platforms,Proxy}
+
+# Tier 0: Archive Master (export from Resolve as DNxHR 444)
+echo "[1/5] Archive Master - Export from Resolve as DNxHR 444 12-bit"
+
+# Tier 1: YouTube AV1 4K
+echo "[2/5] YouTube AV1 4K..."
+bash youtube_av1_export.sh "$SOURCE_FILE" "$OUTPUT_DIR/YouTube/${PROJECT_NAME}_4K_AV1.mp4"
+
+# Tier 2: YouTube H.265 4K (if AV1 fails)
+if [ ! -f "$OUTPUT_DIR/YouTube/${PROJECT_NAME}_4K_AV1.mp4" ]; then
+    echo "[2/5] AV1 failed, using H.265..."
+    ffmpeg -i "$SOURCE_FILE" \\
+        -c:v libx265 -preset slow -crf 16 \\
+        -pix_fmt yuv420p10le \\
+        -b:v 50M -maxrate 68M -bufsize 136M \\
+        -c:a aac -b:a 320k \\
+        "$OUTPUT_DIR/YouTube/${PROJECT_NAME}_4K_H265.mp4"
+fi
+
+# Tier 3: Platform variants
+echo "[3/5] YouTube Shorts..."
+bash youtube_shorts_export.sh "$SOURCE_FILE" "$OUTPUT_DIR/Platforms/"
+
+echo "[4/5] Instagram Reels..."
+bash instagram_export.sh "$SOURCE_FILE" "$OUTPUT_DIR/Platforms/"
+
+echo "[5/5] TikTok..."
+bash tiktok_export.sh "$SOURCE_FILE" "$OUTPUT_DIR/Platforms/"
+
+echo ""
+echo "✅ EXPORT COMPLETE!"
+echo "=================="
+echo ""
+echo "📊 File Report:"
+ls -lh "$OUTPUT_DIR"/*/*.mp4
+echo ""
+echo "🎯 Upload Priority:"
+echo "1. YouTube: ${PROJECT_NAME}_4K_AV1.mp4 (or H265)"
+echo "2. Shorts: ${PROJECT_NAME}_SHORTS.mp4"
+echo "3. Instagram: ${PROJECT_NAME}_INSTAGRAM.mp4"
+echo "4. TikTok: ${PROJECT_NAME}_TIKTOK.mp4"
+"""
+
+        scripts["quick_test_export.sh"] = """#!/bin/bash
+# Quick test export for reviewing edits
+
+ffmpeg -i "$1" \\
+    -vf "scale=1920:1080" \\
+    -c:v libx264 -preset veryfast -crf 23 \\
+    -c:a aac -b:a 128k \\
+    "${1%.*}_PREVIEW.mp4"
+"""
+
+        return scripts
+
+    def save_all_configurations(self):
+        """Save all configurations to project"""
+
+        files_created = []
+
+        # Main configuration
+        config = self.generate_complete_config()
+        config_file = self.config_dir / "ultra_resolve_config.json"
+        with open(config_file, "w") as f:
+            json.dump(config, f, indent=2)
+        files_created.append(str(config_file))
+
+        # Export scripts
+        scripts_dir = self.config_dir / "export_scripts"
+        scripts_dir.mkdir(exist_ok=True)
+
+        # AV1 export script
+        av1_script = scripts_dir / "youtube_av1_export.sh"
+        with open(av1_script, "w") as f:
+            f.write(self.generate_av1_export_command())
+        av1_script.chmod(0o755)
+        files_created.append(str(av1_script))
+
+        # Platform export scripts
+        for name, content in self.generate_export_commands().items():
+            script_file = scripts_dir / f"{name}_export.sh"
+            with open(script_file, "w") as f:
+                f.write(f"#!/bin/bash\nINPUT=$1\nOUTPUT=$2\n{content}")
+            script_file.chmod(0o755)
+            files_created.append(str(script_file))
+
+        # Automation scripts
+        for name, content in self.generate_automation_scripts().items():
+            script_file = scripts_dir / name
+            with open(script_file, "w") as f:
+                f.write(content)
+            script_file.chmod(0o755)
+            files_created.append(str(script_file))
+
+        # Resolve Python API script
+        resolve_script = self.create_resolve_api_script()
+        files_created.append(resolve_script)
+
+        return files_created
+
+    def create_resolve_api_script(self):
+        """Create script for Resolve's Python console"""
+
+        script_content = f'''#!/usr/bin/env python
+"""
+Ultra-Optimized Resolve Setup
+Run in: DaVinci Resolve -> Workspace -> Console
+"""
+
+import os
+import sys
+import json
+
+# Resolve API path
+resolve_path = "/opt/resolve/Developer/Scripting/Modules/"
+if resolve_path not in sys.path:
+    sys.path.append(resolve_path)
+
+try:
+    import DaVinciResolveScript as dvr
+except ImportError:
+    print("ERROR: Run this from Resolve's Console!")
+    sys.exit(1)
+
+# Load config
+CONFIG_FILE = "{self.config_dir}/ultra_resolve_config.json"
+with open(CONFIG_FILE, "r") as f:
+    config = json.load(f)
+
+# Connect to Resolve
+resolve = dvr.scriptapp("Resolve")
+if not resolve:
+    print("ERROR: Cannot connect to Resolve")
+    sys.exit(1)
+
+pm = resolve.GetProjectManager()
+
+# Create optimized project
+print("🎬 Creating Ultra-Optimized YouTube Project...")
+
+project_settings = config["project_settings"]
+proj = pm.CreateProject(project_settings["name"])
+
+if proj:
+    print(f"✅ Project created: {{project_settings['name']}}")
+
+    # Apply settings
+    proj.SetSetting("timelineResolution", f"{{project_settings['resolution']['width']}}x{{project_settings['resolution']['height']}}")
+    proj.SetSetting("timelineFrameRate", str(project_settings["framerate"]))
+    proj.SetSetting("videoBitDepth", "10")
+
+    # Color management
+    proj.SetSetting("colorScienceMode", "davinciYRGBColorManaged")
+    proj.SetSetting("timelineWorkingLuminance", "100")
+    proj.SetSetting("timelineColorSpace", "Rec.709-A")
+    proj.SetSetting("outputColorSpace", "Rec.709-A")
+
+    print("✅ Applied optimal YouTube settings")
+
+    # Create bins
+    mp = proj.GetMediaPool()
+    root = mp.GetRootFolder()
+
+    bins = [
+        "01_FOOTAGE/A_ROLL",
+        "01_FOOTAGE/B_ROLL",
+        "01_FOOTAGE/SCREEN",
+        "02_AUDIO/DIALOGUE",
+        "02_AUDIO/MUSIC",
+        "02_AUDIO/SFX",
+        "03_GRAPHICS/TITLES",
+        "03_GRAPHICS/OVERLAYS",
+        "04_COLOR/GRADES",
+        "04_COLOR/LUTS",
+        "05_VFX/FUSION",
+        "06_EXPORT/MASTERS",
+        "06_EXPORT/YOUTUBE",
+        "06_EXPORT/PLATFORMS"
+    ]
+
+    for bin_path in bins:
+        parts = bin_path.split("/")
+        current = root
+        for part in parts:
+            # Create nested structure
+            folder = mp.AddSubFolder(current, part)
+            if folder:
+                current = folder
+                print(f"  Created: {{bin_path}}")
+
+    # Create timeline
+    timeline = mp.CreateEmptyTimeline("Main_Edit_4K")
+    if timeline:
+        print("✅ Created 4K timeline")
+
+        # Add markers
+        markers = config["timeline_config"].get("markers", [])
+        for marker in markers:
+            # Add timeline markers
+            pass  # Requires specific frame numbers
+
+    print("")
+    print("=" * 50)
+    print("🎯 ULTRA-OPTIMIZED SETUP COMPLETE!")
+    print("=" * 50)
+    print("")
+    print("Next steps:")
+    print("1. Import footage to bins")
+    print("2. Apply FX30 color grade")
+    print("3. Set audio to -14 LUFS")
+    print("4. Export using multi-tier system")
+
+else:
+    print("ERROR: Could not create project")
+'''
+
+        script_file = self.config_dir / "setup_resolve.py"
+        with open(script_file, "w") as f:
+            f.write(script_content)
+        script_file.chmod(0o755)
+
+        return str(script_file)
+
+
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description='Ultra-optimized DaVinci Resolve configuration for maximum YouTube quality',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+ULTRA-QUALITY YouTube Strategy:
+
+1. Always upload at 4K (3840x2160) even if source is 1080p
+   - Forces YouTube to assign VP9/AV1 codec
+   - Results in better quality than 1080p with AVC
+
+2. Use 10-bit color throughout pipeline
+   - Reduces banding in gradients
+   - Better color accuracy after YouTube compression
+
+3. Export with AV1 for best quality
+   - 20-30% better than H.265 at same bitrate
+   - 50% better than H.264 at same bitrate
+
+4. Master audio at exactly -14 LUFS
+   - YouTube's exact target
+   - Prevents quality-reducing normalization
+
+Examples:
+  # Generate ultra-optimized Resolve config
+  sf-resolve generate "Episode 1"
+
+  # Export with all quality tiers
+  sf-resolve export "Episode 1" master.mov
+
+  # Setup in Resolve
+  sf-resolve setup "Episode 1"
+
+  # Quick quality check
+  sf-resolve check "Episode 1"
+"""
+    )
+
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+
+    # Generate command
+    gen_parser = subparsers.add_parser('generate', help='Generate ultra-optimized config')
+    gen_parser.add_argument('project', help='Project name')
+
+    # Export command
+    export_parser = subparsers.add_parser('export', help='Run multi-tier export')
+    export_parser.add_argument('project', help='Project name')
+    export_parser.add_argument('source', help='Source file (Master export from Resolve)')
+
+    # Setup command
+    setup_parser = subparsers.add_parser('setup', help='Instructions for Resolve setup')
+    setup_parser.add_argument('project', help='Project name')
+
+    # Check command
+    check_parser = subparsers.add_parser('check', help='Check quality settings')
+    check_parser.add_argument('project', help='Project name')
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    # Get project
+    project = CliHelper.require_project(args.project)
+    template = UltraResolveTemplate(project)
+
+    if args.command == 'generate':
+        print("🎬 Generating ULTRA-OPTIMIZED Resolve Configuration...")
+        print("=" * 50)
+
+        files = template.save_all_configurations()
+
+        print("✅ Created files:")
+        for f in files:
+            print(f"  - {f}")
+
+        print("\n📋 SETUP INSTRUCTIONS:")
+        print("=" * 50)
+        print("1. Open DaVinci Resolve")
+        print("2. Go to: Workspace → Console")
+        print(f"3. Run: exec(open('{template.config_dir}/setup_resolve.py').read())")
+        print("\n🎯 QUALITY CHECKLIST:")
+        print("[ ] Timeline: 4K (3840x2160) @ 29.97fps")
+        print("[ ] Color: Rec.709, 10-bit processing")
+        print("[ ] Audio: -14 LUFS integrated")
+        print("[ ] Export: DNxHR 444 master first")
+        print("[ ] Upload: AV1 4K to YouTube")
+
+        JsonStream.success("Ultra-optimized configuration generated", {
+            "files": len(files),
+            "location": str(template.config_dir)
+        })
+
+    elif args.command == 'export':
+        script = template.config_dir / "export_scripts" / "export_all_tiers.sh"
+
+        if not script.exists():
+            print("❌ No export script found. Run 'generate' first!")
+            sys.exit(1)
+
+        print("🚀 Running ULTRA-QUALITY Export Pipeline...")
+        print("=" * 50)
+
+        project_name = project.name.replace(" ", "_")
+        cmd = [str(script), project_name, args.source]
+
+        result = subprocess.run(cmd, capture_output=False, text=True)
+
+        if result.returncode == 0:
+            print("\n✅ Export successful!")
+            print("\n📊 Quality Report:")
+            print("- Archive Master: DNxHR 444 12-bit (lossless)")
+            print("- YouTube Upload: AV1 4K 10-bit @ 45 Mbps")
+            print("- Platforms: Optimized for each platform")
+        else:
+            print("\n❌ Export failed!")
+
+    elif args.command == 'setup':
+        print("📋 RESOLVE SETUP INSTRUCTIONS")
+        print("=" * 50)
+        print("\n1. OPEN DAVINCI RESOLVE")
+        print("\n2. CONSOLE METHOD (Automated):")
+        print("   - Go to: Workspace → Console")
+        print(f"   - Type: exec(open('{template.config_dir}/setup_resolve.py').read())")
+        print("   - Press Enter")
+        print("\n3. MANUAL METHOD:")
+        print("   - Create new project")
+        print("   - Project Settings:")
+        print("     • Timeline Resolution: 3840x2160")
+        print("     • Timeline Frame Rate: 29.97")
+        print("     • Video Bit Depth: 10 bit")
+        print("   - Color Management:")
+        print("     • Color Science: DaVinci YRGB Color Managed")
+        print("     • Timeline Color Space: Rec.709-A")
+        print("     • Output Color Space: Rec.709-A")
+        print("   - Audio:")
+        print("     • Sample Rate: 48 kHz")
+        print("     • -14 LUFS target")
+
+    elif args.command == 'check':
+        config_file = template.config_dir / "ultra_resolve_config.json"
+
+        if config_file.exists():
+            with open(config_file, "r") as f:
+                config = json.load(f)
+
+            print("🔍 QUALITY SETTINGS CHECK")
+            print("=" * 50)
+            print(f"\n✅ Configuration found: {config_file}")
+            print("\nKey settings:")
+            print(f"  Resolution: {config['project_settings']['resolution']['width']}x{config['project_settings']['resolution']['height']}")
+            print(f"  Frame Rate: {config['project_settings']['framerate']} fps")
+            print(f"  Color Depth: {config['project_settings']['color']['bit_depth']} bit")
+            print(f"  Audio Target: {config['audio_config']['bus_configuration']['main']['processing']['loudness']['target_loudness']} LUFS")
+            print("\nExport strategy:")
+            print("  Tier 0: DNxHR 444 12-bit (Archive)")
+            print("  Tier 1: AV1 4K 10-bit (YouTube)")
+            print("  Tier 2: H.265 4K 10-bit (Fallback)")
+            print("  Tier 3: Platform-specific (Shorts/Reels/TikTok)")
+        else:
+            print("❌ No configuration found. Run 'generate' first!")
+
+if __name__ == '__main__':
+    main()

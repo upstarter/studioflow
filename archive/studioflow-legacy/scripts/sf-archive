@@ -1,0 +1,252 @@
+#!/usr/bin/env python3
+"""
+sf-archive - Project archival management tool
+Moves completed projects from active storage to archive
+"""
+
+import sys
+import os
+import shutil
+import json
+from pathlib import Path
+from datetime import datetime
+
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import Project, JsonStream, STORAGE_TIERS
+
+class ProjectArchiver:
+    def __init__(self):
+        self.json = JsonStream()
+        self.active = STORAGE_TIERS["active"]
+        self.archive = Path("/mnt/archive/Projects")
+
+    def list_active(self):
+        """List all active projects"""
+        if not self.active.exists():
+            return []
+
+        projects = []
+        for project_dir in self.active.iterdir():
+            if project_dir.is_dir() and not project_dir.name.startswith('.'):
+                # Get size and last modified
+                size = sum(f.stat().st_size for f in project_dir.rglob('*') if f.is_file())
+                mtime = project_dir.stat().st_mtime
+
+                projects.append({
+                    'name': project_dir.name,
+                    'path': str(project_dir),
+                    'size_mb': size / (1024*1024),
+                    'modified': datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')
+                })
+
+        return sorted(projects, key=lambda x: x['modified'], reverse=True)
+
+    def archive_project(self, project_name, year=None):
+        """Move project to archive"""
+        source = self.active / project_name
+
+        if not source.exists():
+            self.json.emit({"event": "error", "message": f"Project not found: {project_name}"})
+            return False
+
+        # Determine year from project name or use current year
+        if year is None:
+            # Try to extract year from project name (e.g., 20250920_Project)
+            if project_name[:4].isdigit():
+                year = project_name[:4]
+            else:
+                year = str(datetime.now().year)
+
+        # Create archive destination
+        dest_dir = self.archive / year
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / project_name
+
+        # Check if already exists in archive
+        if dest.exists():
+            self.json.emit({
+                "event": "error",
+                "message": f"Project already exists in archive: {dest}"
+            })
+            return False
+
+        # Get project size before move
+        size = sum(f.stat().st_size for f in source.rglob('*') if f.is_file())
+        size_gb = size / (1024**3)
+
+        self.json.emit({
+            "event": "archiving_start",
+            "project": project_name,
+            "size_gb": round(size_gb, 2),
+            "destination": str(dest)
+        })
+
+        try:
+            # Move the project
+            shutil.move(str(source), str(dest))
+
+            # Verify move
+            if dest.exists() and not source.exists():
+                self.json.emit({
+                    "event": "archive_complete",
+                    "project": project_name,
+                    "location": str(dest),
+                    "size_gb": round(size_gb, 2)
+                })
+
+                # Create a redirect file in active
+                redirect = source.with_suffix('.archived')
+                redirect.write_text(f"Project archived to: {dest}\nDate: {datetime.now().isoformat()}\n")
+
+                return True
+            else:
+                raise Exception("Move verification failed")
+
+        except Exception as e:
+            self.json.emit({
+                "event": "error",
+                "message": f"Archive failed: {e}"
+            })
+            # Try to restore if partially moved
+            if dest.exists() and not source.exists():
+                shutil.move(str(dest), str(source))
+            return False
+
+    def restore_project(self, project_name, year=None):
+        """Restore project from archive to active"""
+        # Find in archive
+        if year:
+            source = self.archive / year / project_name
+        else:
+            # Search all years
+            for year_dir in self.archive.iterdir():
+                if year_dir.is_dir():
+                    possible = year_dir / project_name
+                    if possible.exists():
+                        source = possible
+                        break
+            else:
+                self.json.emit({"event": "error", "message": f"Project not found in archive: {project_name}"})
+                return False
+
+        if not source.exists():
+            self.json.emit({"event": "error", "message": f"Project not found: {source}"})
+            return False
+
+        dest = self.active / project_name
+
+        # Check if exists in active
+        if dest.exists():
+            self.json.emit({
+                "event": "error",
+                "message": f"Project already exists in active storage: {dest}"
+            })
+            return False
+
+        try:
+            shutil.move(str(source), str(dest))
+
+            # Remove redirect file if exists
+            redirect = dest.with_suffix('.archived')
+            if redirect.exists():
+                redirect.unlink()
+
+            self.json.emit({
+                "event": "restore_complete",
+                "project": project_name,
+                "location": str(dest)
+            })
+            return True
+
+        except Exception as e:
+            self.json.emit({
+                "event": "error",
+                "message": f"Restore failed: {e}"
+            })
+            return False
+
+    def list_archived(self):
+        """List all archived projects"""
+        if not self.archive.exists():
+            return []
+
+        projects = []
+        for year_dir in sorted(self.archive.iterdir()):
+            if year_dir.is_dir():
+                for project_dir in year_dir.iterdir():
+                    if project_dir.is_dir():
+                        size = sum(f.stat().st_size for f in project_dir.rglob('*') if f.is_file())
+                        mtime = project_dir.stat().st_mtime
+
+                        projects.append({
+                            'name': project_dir.name,
+                            'year': year_dir.name,
+                            'path': str(project_dir),
+                            'size_gb': size / (1024**3),
+                            'modified': datetime.fromtimestamp(mtime).strftime('%Y-%m-%d')
+                        })
+
+        return projects
+
+def main():
+    archiver = ProjectArchiver()
+
+    if len(sys.argv) < 2:
+        print("Usage: sf-archive <command> [options]")
+        print("\nCommands:")
+        print("  list              - List active projects")
+        print("  list-archived     - List archived projects")
+        print("  archive <name>    - Archive a project")
+        print("  restore <name>    - Restore from archive")
+        print("\nExamples:")
+        print("  sf-archive list")
+        print("  sf-archive archive '20250920_Creator_Ai_Hub_Episode_1'")
+        print("  sf-archive restore '20250920_Creator_Ai_Hub_Episode_1'")
+        sys.exit(1)
+
+    command = sys.argv[1]
+
+    if command == "list":
+        projects = archiver.list_active()
+        if projects:
+            print("\n📁 Active Projects:")
+            print("-" * 60)
+            for p in projects:
+                print(f"  {p['name']:<40} {p['size_mb']:>8.1f} MB  {p['modified']}")
+        else:
+            print("No active projects found")
+
+    elif command == "list-archived":
+        projects = archiver.list_archived()
+        if projects:
+            print("\n📦 Archived Projects:")
+            print("-" * 60)
+            for p in projects:
+                print(f"  {p['year']}/{p['name']:<35} {p['size_gb']:>6.2f} GB  {p['modified']}")
+        else:
+            print("No archived projects found")
+
+    elif command == "archive" and len(sys.argv) > 2:
+        project_name = sys.argv[2]
+        print(f"📦 Archiving project: {project_name}")
+        if archiver.archive_project(project_name):
+            print("✅ Archive complete!")
+        else:
+            print("❌ Archive failed")
+            sys.exit(1)
+
+    elif command == "restore" and len(sys.argv) > 2:
+        project_name = sys.argv[2]
+        print(f"♻️  Restoring project: {project_name}")
+        if archiver.restore_project(project_name):
+            print("✅ Restore complete!")
+        else:
+            print("❌ Restore failed")
+            sys.exit(1)
+
+    else:
+        print(f"Unknown command: {command}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

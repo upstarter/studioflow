@@ -1,0 +1,346 @@
+#!/usr/bin/env python3
+"""
+sf-workflow - Master workflow orchestrator for complete media pipeline
+Coordinates all StudioFlow tools for seamless production
+"""
+
+import sys
+import os
+import json
+import subprocess
+import time
+from pathlib import Path
+from datetime import datetime
+
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import JsonStream
+
+class WorkflowOrchestrator:
+    def __init__(self):
+        self.json = JsonStream()
+        self.config = self.load_config()
+
+    def load_config(self):
+        """Load user workflow preferences"""
+        config_path = Path.home() / ".config" / "studioflow" / "workflow.json"
+
+        default_config = {
+            "auto_create_project": True,
+            "project_template": "youtube_4k",
+            "cameras": {
+                "A": {"model": "FX30", "role": "main"},
+                "B": {"model": "ZV-E10", "role": "b_cam"}
+            },
+            "resolve": {
+                "auto_setup": True,
+                "timeline_markers": True,
+                "optimize_youtube": True,
+                "target_platforms": ["youtube", "shorts", "instagram"]
+            },
+            "notifications": {
+                "desktop": True,
+                "sound": False
+            },
+            "paths": {
+                "projects": "/mnt/studio/Projects",
+                "pool": "/mnt/ingest/Camera/Pool",
+                "archive": "/mnt/archive/Projects",
+                "library": "/mnt/library/Assets"
+            }
+        }
+
+        if config_path.exists():
+            with open(config_path) as f:
+                user_config = json.load(f)
+                default_config.update(user_config)
+        else:
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(config_path, "w") as f:
+                json.dump(default_config, f, indent=2)
+
+        return default_config
+
+    def monitor_cards(self):
+        """Monitor for card insertion events"""
+        print("🎬 StudioFlow Workflow Monitor Active")
+        print("Insert camera cards to begin automated workflow...")
+
+        # Monitor udev events
+        monitor = subprocess.Popen(
+            ["udevadm", "monitor", "--subsystem=block", "--property"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            universal_newlines=True
+        )
+
+        try:
+            for line in monitor.stdout:
+                if "ACTION=add" in line:
+                    time.sleep(2)  # Let device settle
+                    self.handle_new_device()
+        except KeyboardInterrupt:
+            print("\n👋 Workflow monitor stopped")
+        finally:
+            monitor.terminate()
+
+    def handle_new_device(self):
+        """Process newly inserted card"""
+        # Check mounted devices
+        result = subprocess.run(
+            ["lsblk", "-J", "-o", "NAME,FSTYPE,MOUNTPOINT,SIZE,LABEL"],
+            capture_output=True,
+            text=True
+        )
+
+        devices = json.loads(result.stdout)
+
+        for device in devices.get("blockdevices", []):
+            if device.get("mountpoint") and "/media/" in device.get("mountpoint", ""):
+                # Check if camera card
+                mount = Path(device["mountpoint"])
+                if (mount / "DCIM").exists() or (mount / "PRIVATE").exists():
+                    self.process_card(device["name"], device["mountpoint"])
+
+    def process_card(self, device, mount_point):
+        """Complete workflow for a camera card"""
+        self.json.emit({"event": "workflow_start", "device": device})
+
+        # 1. Detect or create project
+        project = self.get_or_create_project()
+
+        # 2. Run intelligent import
+        self.json.emit({"event": "importing_media"})
+        import_result = subprocess.run(
+            ["/mnt/projects/studioflow/sf-ingest", device, mount_point],
+            capture_output=True,
+            text=True
+        )
+
+        # 3. Generate Resolve setup
+        if self.config["resolve"]["auto_setup"]:
+            self.setup_resolve(project)
+
+        # 4. Generate optimization reports
+        self.generate_reports(project)
+
+        # 5. Prepare for edit
+        self.prepare_edit_environment(project)
+
+        self.json.emit({
+            "event": "workflow_complete",
+            "project": str(project),
+            "ready_to_edit": True
+        })
+
+    def get_or_create_project(self):
+        """Smart project detection/creation"""
+        projects_dir = Path(self.config["paths"]["projects"])
+
+        # Check for today's project
+        today = datetime.now().strftime("%Y%m%d")
+        for project in projects_dir.glob(f"{today}_*"):
+            if (project / ".studioflow").exists():
+                return project
+
+        # Create new project
+        project_name = input("📝 Project name (or Enter for auto): ").strip()
+        if not project_name:
+            project_name = f"{today}_Creator_AI_Hub_Episode"
+
+        project_path = projects_dir / project_name
+
+        # Use sf-project to create
+        subprocess.run([
+            "/mnt/projects/studioflow/sf-project",
+            "create",
+            project_name,
+            "--template",
+            self.config["project_template"]
+        ])
+
+        return project_path
+
+    def setup_resolve(self, project_path):
+        """Configure Resolve for optimal YouTube production"""
+        self.json.emit({"event": "configuring_resolve"})
+
+        # Generate complete Resolve setup
+        resolve_script = f"""#!/usr/bin/env python
+# Auto-generated by sf-workflow
+import DaVinciResolveScript as dvr
+
+resolve = dvr.scriptapp("Resolve")
+pm = resolve.GetProjectManager()
+
+# YouTube-optimized project
+project_name = "{project_path.name}_YouTube"
+project = pm.GetProjectByName(project_name) or pm.CreateProject(project_name)
+
+# Force 4K for VP9/AV1 on YouTube
+project.SetSetting("timelineResolutionWidth", "3840")
+project.SetSetting("timelineResolutionHeight", "2160")
+project.SetSetting("timelineFrameRate", "29.97")
+
+# Color management for FX30/ZV-E10 S-Cinetone
+project.SetSetting("colorScienceMode", "davinciYRGBColorManaged")
+project.SetSetting("colorSpaceInput", "Rec.709")
+project.SetSetting("colorSpaceTimeline", "Rec.709")
+project.SetSetting("colorSpaceOutput", "Rec.709")
+
+# Create bin structure
+mp = project.GetMediaPool()
+root = mp.GetRootFolder()
+
+bins = {{}}
+for main_bin in ["01_FOOTAGE", "02_AUDIO", "03_GRAPHICS", "04_COLOR", "05_EXPORT"]:
+    bins[main_bin] = mp.AddSubFolder(root, main_bin)
+
+# Sub-bins for organization
+sub_bins = {{
+    "01_FOOTAGE": ["A_CAM_FX30", "B_CAM_ZVE10", "SCREEN", "MULTICAM"],
+    "02_AUDIO": ["DIALOGUE", "MUSIC", "SFX", "VOICEOVER"],
+    "03_GRAPHICS": ["TITLES", "OVERLAYS", "THUMBNAILS", "ENDSCREEN"]
+}}
+
+for main, subs in sub_bins.items():
+    for sub in subs:
+        mp.AddSubFolder(bins[main], sub)
+
+# Create YouTube-optimized timeline
+timeline = mp.CreateEmptyTimeline("Main_Edit_YouTube_4K30")
+timeline.SetSetting("timelineResolutionWidth", "3840")
+timeline.SetSetting("timelineResolutionHeight", "2160")
+
+# Add content structure markers
+markers = [
+    (0, "Red", "HOOK", "Grab attention in 3 seconds"),
+    (600, "Blue", "INTRO", "Set expectations"),
+    (1350, "Green", "MAIN", "Core content delivery"),
+    (13500, "Orange", "PAYOFF", "Summarize value"),
+    (16200, "Red", "CTA", "Subscribe + Next video")
+]
+
+for frame, color, name, note in markers:
+    timeline.AddMarker(frame, color, name, note, 1)
+
+print("✅ Resolve configured for YouTube success!")
+"""
+
+        script_path = project_path / ".studioflow" / "resolve" / "youtube_setup.py"
+        script_path.parent.mkdir(parents=True, exist_ok=True)
+        script_path.write_text(resolve_script)
+
+        return script_path
+
+    def generate_reports(self, project_path):
+        """Generate production insights"""
+        reports_dir = project_path / ".studioflow" / "reports"
+        reports_dir.mkdir(parents=True, exist_ok=True)
+
+        # Production checklist
+        checklist = """# YouTube Production Checklist
+
+## Pre-Production ✅
+- [x] Project created with optimal settings
+- [x] Media imported and organized
+- [x] Resolve project configured for 4K
+
+## Production 🎬
+- [ ] Review A-roll for best takes
+- [ ] Select B-roll for cutaways
+- [ ] Sync multicam if available
+- [ ] Apply base color grade
+
+## Post-Production 🎨
+- [ ] Edit to YouTube retention curve
+- [ ] Add pattern interrupts every 30s
+- [ ] Master audio to -14 LUFS
+- [ ] Export DNxHR 444 master
+
+## Distribution 🚀
+- [ ] Generate AV1 for YouTube (4K)
+- [ ] Create Shorts version (vertical)
+- [ ] Export Instagram Reels
+- [ ] Schedule optimal upload time
+
+## Analytics 📊
+- [ ] Monitor first 48hr performance
+- [ ] Check retention graph
+- [ ] Review CTR on thumbnail
+- [ ] Analyze traffic sources
+"""
+
+        (reports_dir / "checklist.md").write_text(checklist)
+
+        # Quick stats
+        stats = {
+            "project": project_path.name,
+            "created": datetime.now().isoformat(),
+            "cameras": ["FX30 (A-Cam)", "ZV-E10 (B-Cam)"],
+            "target": "YouTube Premium Quality",
+            "settings": {
+                "resolution": "3840x2160",
+                "fps": "29.97",
+                "codec": "VP9/AV1 (via 4K upload)",
+                "audio": "-14 LUFS"
+            }
+        }
+
+        with open(reports_dir / "project_stats.json", "w") as f:
+            json.dump(stats, f, indent=2)
+
+    def prepare_edit_environment(self, project_path):
+        """Set up optimal editing environment"""
+        # Create quick launch scripts
+        scripts_dir = project_path / ".studioflow" / "scripts"
+        scripts_dir.mkdir(parents=True, exist_ok=True)
+
+        # OBS launch script
+        obs_script = f"""#!/bin/bash
+# Launch OBS with project settings
+obs --profile "YouTube" --scene-collection "{project_path.name}" &
+"""
+        (scripts_dir / "launch_obs.sh").write_text(obs_script)
+
+        # Resolve launch script
+        resolve_script = f"""#!/bin/bash
+# Launch Resolve and load project
+/opt/resolve/bin/resolve &
+echo "Load project: {project_path.name}_YouTube"
+"""
+        (scripts_dir / "launch_resolve.sh").write_text(resolve_script)
+
+        # Make scripts executable
+        for script in scripts_dir.glob("*.sh"):
+            script.chmod(0o755)
+
+        self.json.emit({
+            "event": "environment_ready",
+            "project": str(project_path),
+            "scripts": str(scripts_dir)
+        })
+
+def main():
+    orchestrator = WorkflowOrchestrator()
+
+    if len(sys.argv) > 1:
+        command = sys.argv[1]
+
+        if command == "monitor":
+            orchestrator.monitor_cards()
+        elif command == "setup":
+            project = orchestrator.get_or_create_project()
+            orchestrator.setup_resolve(project)
+            print(f"✅ Project configured: {project}")
+        else:
+            print(f"Unknown command: {command}")
+    else:
+        print("sf-workflow - Master production orchestrator")
+        print("\nCommands:")
+        print("  monitor  - Watch for camera cards")
+        print("  setup    - Configure current project")
+        print("\nExample:")
+        print("  sf-workflow monitor")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""
+StudioFlow Capture - Quick capture and processing tool
+"""
+
+import sys
+import os
+import argparse
+from pathlib import Path
+
+sys.path.insert(0, '/mnt/projects/studioflow/src')
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='StudioFlow Capture Tools - Screenshot pipeline for content creators',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Quick capture
+  studioflow-capture snap
+  studioflow-capture snap "claude-response"
+
+  # Process captures
+  studioflow-capture crop image.png
+  studioflow-capture standardize image.png --resolution 1080p
+
+  # Create comparison grid
+  studioflow-capture grid image1.png image2.png image3.png
+  studioflow-capture grid --auto  # Uses last 3 captures
+
+  # Batch process today's captures
+  studioflow-capture batch MyProject --operations crop,standardize
+
+  # Organize captures
+  studioflow-capture organize ProjectName
+
+  # Workflows
+  studioflow-capture ai-compare "Claude" "ChatGPT" "Gemini"
+  studioflow-capture tutorial "How to use Resolve"
+
+Quick Aliases (after setup):
+  cap         - Quick capture
+  caps        - Go to captures folder
+  capgrid     - Create comparison grid
+  caporg      - Organize today's captures
+        """
+    )
+
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+
+    # Snap command
+    snap_parser = subparsers.add_parser('snap', help='Quick screenshot capture')
+    snap_parser.add_argument('name', nargs='?', help='Optional name for capture')
+
+    # Crop command
+    crop_parser = subparsers.add_parser('crop', help='Remove browser chrome')
+    crop_parser.add_argument('image', help='Image to crop')
+    crop_parser.add_argument('--browser', default='chrome',
+                            choices=['chrome', 'firefox', 'safari', 'arc', 'edge'],
+                            help='Browser type for crop settings')
+
+    # Standardize command
+    std_parser = subparsers.add_parser('standardize', help='Standardize resolution')
+    std_parser.add_argument('image', help='Image to standardize')
+    std_parser.add_argument('--resolution', default='1080p',
+                           choices=['4k', '1080p', '720p', 'square', 'vertical'],
+                           help='Target resolution')
+
+    # Grid command
+    grid_parser = subparsers.add_parser('grid', help='Create comparison grid')
+    grid_parser.add_argument('images', nargs='*', help='Images to combine')
+    grid_parser.add_argument('--auto', action='store_true',
+                            help='Use last 3 captures automatically')
+    grid_parser.add_argument('--layout', default='horizontal',
+                            choices=['horizontal', 'vertical', 'grid'],
+                            help='Grid layout')
+    grid_parser.add_argument('--labels', nargs='+', help='Labels for images')
+
+    # Batch command
+    batch_parser = subparsers.add_parser('batch', help='Batch process captures')
+    batch_parser.add_argument('project', help='Project name')
+    batch_parser.add_argument('--operations', default='crop,standardize',
+                             help='Comma-separated operations')
+
+    # Organize command
+    org_parser = subparsers.add_parser('organize', help='Organize captures')
+    org_parser.add_argument('project', nargs='?', help='Project name')
+
+    # AI Compare workflow
+    ai_parser = subparsers.add_parser('ai-compare',
+                                      help='AI tool comparison workflow')
+    ai_parser.add_argument('tools', nargs='+', help='Tool names to compare')
+
+    # Tutorial workflow
+    tut_parser = subparsers.add_parser('tutorial', help='Tutorial capture workflow')
+    tut_parser.add_argument('topic', help='Tutorial topic')
+
+    # Annotate command
+    ann_parser = subparsers.add_parser('annotate', help='Add annotations to image')
+    ann_parser.add_argument('image', help='Image to annotate')
+    ann_parser.add_argument('--highlight', nargs=4, type=int, metavar=('X1', 'Y1', 'X2', 'Y2'),
+                           help='Add highlight box')
+    ann_parser.add_argument('--text', nargs=3, metavar=('X', 'Y', 'TEXT'),
+                           help='Add text annotation')
+
+    # Setup command
+    setup_parser = subparsers.add_parser('setup', help='Initial setup')
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        return 1
+
+    from studioflow.extensions.capture_tools import (
+        CaptureManager, CaptureWorkflow, setup_capture_tools
+    )
+
+    manager = CaptureManager()
+
+    if args.command == 'snap':
+        manager.quick_capture(args.name)
+
+    elif args.command == 'crop':
+        manager.crop_browser_chrome(args.image, args.browser)
+
+    elif args.command == 'standardize':
+        manager.standardize_resolution(args.image, args.resolution)
+
+    elif args.command == 'grid':
+        if args.auto:
+            # Get last 3 captures
+            recent = sorted(manager.dirs["hot"].glob("*.png"))[-3:]
+            if recent:
+                images = [str(f) for f in recent]
+            else:
+                print("No recent captures found")
+                return 1
+        else:
+            images = args.images
+
+        if images:
+            manager.create_comparison_grid(images, args.layout, args.labels)
+        else:
+            print("No images specified")
+            return 1
+
+    elif args.command == 'batch':
+        operations = args.operations.split(',')
+        manager.batch_process(args.project, operations)
+
+    elif args.command == 'organize':
+        manager.organize_day(args.project)
+
+    elif args.command == 'ai-compare':
+        workflow = CaptureWorkflow()
+        workflow.ai_comparison_workflow(args.tools)
+
+    elif args.command == 'tutorial':
+        workflow = CaptureWorkflow()
+        workflow.tutorial_workflow(args.topic)
+
+    elif args.command == 'annotate':
+        annotations = []
+        if args.highlight:
+            annotations.append({
+                "type": "highlight",
+                "coords": args.highlight
+            })
+        if args.text:
+            annotations.append({
+                "type": "text",
+                "pos": [int(args.text[0]), int(args.text[1])],
+                "text": args.text[2]
+            })
+        if annotations:
+            manager.add_annotation(args.image, annotations)
+        else:
+            print("No annotations specified")
+
+    elif args.command == 'setup':
+        setup_capture_tools()
+
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

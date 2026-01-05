@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+"""
+StudioFlow Resolve Project Creator
+Creates a new DaVinci Resolve project with timeline and imports media
+Runs OUTSIDE of Resolve, connecting via API
+"""
+
+import sys
+import json
+from pathlib import Path
+
+def create_resolve_project(project_name, clips_metadata):
+    """Create a new Resolve project with timeline and media"""
+
+    try:
+        # Import DaVinci Resolve API
+        # This assumes Resolve is running and the API is available
+        import DaVinciResolveScript as dvr
+    except ImportError:
+        print("ERROR: DaVinci Resolve API not found")
+        print("Make sure:")
+        print("1. DaVinci Resolve is running")
+        print("2. Python API is enabled in Resolve preferences")
+        print("3. RESOLVE_SCRIPT_API env variable is set")
+        return False
+
+    # Get Resolve instance
+    resolve = dvr.scriptapp("Resolve")
+    if not resolve:
+        print("ERROR: Could not connect to DaVinci Resolve")
+        print("Make sure Resolve is running")
+        return False
+
+    # Get project manager
+    pm = resolve.GetProjectManager()
+
+    # Create new project
+    print(f"Creating project: {project_name}")
+    project = pm.CreateProject(project_name)
+    if not project:
+        print(f"ERROR: Failed to create project '{project_name}'")
+        print("Project may already exist")
+        return False
+
+    # Set project settings for YouTube 4K30
+    project.SetSetting("timelineResolutionWidth", "3840")
+    project.SetSetting("timelineResolutionHeight", "2160")
+    project.SetSetting("timelineFrameRate", "29.97")
+    project.SetSetting("videoDeckFormat", "Youtube 2160p")
+
+    # Set working folders to correct locations
+    project.SetSetting("workingFolder", "/mnt/studio/Projects")
+    project.SetSetting("workingFolderCacheClips", "/mnt/studio/Projects/.cache")
+    project.SetSetting("workingFolderProxyMedia", "/mnt/studio/Projects/.proxy")
+    project.SetSetting("workingFolderGalleryStills", "/mnt/studio/Projects/.gallery")
+
+    print("Project settings configured for YouTube 4K30")
+
+    # Get media pool
+    media_pool = project.GetMediaPool()
+    root_folder = media_pool.GetRootFolder()
+
+    # Create bins for organization
+    categories = {}
+    for clip in clips_metadata:
+        category = clip.get('category', 'general')
+        if category not in categories:
+            categories[category] = []
+        categories[category].append(clip)
+
+    print(f"Organizing {len(clips_metadata)} clips into {len(categories)} bins")
+
+    # Create bins and import media
+    for category, clips in categories.items():
+        # Create bin
+        bin_name = category.upper().replace('_', ' ')
+        print(f"Creating bin: {bin_name}")
+        bin_folder = media_pool.AddSubFolder(root_folder, bin_name)
+
+        if bin_folder:
+            # Set current folder
+            media_pool.SetCurrentFolder(bin_folder)
+
+            # Import clips
+            clip_paths = []
+            for clip in clips:
+                clip_path = clip.get('path')
+                if not clip_path:
+                    # Construct path from filename
+                    clip_path = f"/mnt/ingest/Camera/Pool/2025-09/20250920_Creator_Ai_Hub_Episode_1_IMPORTS/M4ROOT/CLIP/{clip['filename']}"
+
+                if Path(clip_path).exists():
+                    clip_paths.append(clip_path)
+                else:
+                    print(f"  Warning: File not found: {clip_path}")
+
+            if clip_paths:
+                print(f"  Importing {len(clip_paths)} clips to {bin_name}")
+                imported = media_pool.ImportMedia(clip_paths)
+                if imported:
+                    print(f"  Successfully imported {len(imported)} clips")
+                else:
+                    print(f"  Failed to import clips to {bin_name}")
+
+    # Create timeline
+    print("Creating timeline: Main_Edit_4K30_YouTube")
+
+    # Reset to root folder for timeline
+    media_pool.SetCurrentFolder(root_folder)
+
+    # Create timeline with settings
+    timeline = media_pool.CreateTimelineFromClips(
+        "Main_Edit_4K30_YouTube",
+        []  # Empty for now, we'll add clips after
+    )
+
+    if timeline:
+        print("Timeline created successfully")
+
+        # Add markers to timeline
+        markers = [
+            {"frame": 0, "name": "HOOK", "note": "Opening hook - 20 seconds", "color": "Red"},
+            {"frame": 600, "name": "INTRO", "note": "Introduction - 25 seconds", "color": "Blue"},
+            {"frame": 1350, "name": "MAIN", "note": "Main content - 6:45", "color": "Green"},
+            {"frame": 13500, "name": "PAYOFF", "note": "Key takeaways - 1:10", "color": "Orange"},
+            {"frame": 16200, "name": "CTA", "note": "Call to action - 20 seconds", "color": "Red"}
+        ]
+
+        for marker in markers:
+            success = timeline.AddMarker(
+                marker["frame"],
+                marker["color"],
+                marker["name"],
+                marker["note"],
+                1  # Duration in frames
+            )
+            if success:
+                print(f"  Added marker: {marker['name']} at frame {marker['frame']}")
+    else:
+        print("Failed to create timeline")
+
+    print(f"\n✅ Project '{project_name}' created successfully!")
+    print("The project is now open in DaVinci Resolve")
+    print("\nNext steps:")
+    print("1. Review the imported clips in bins")
+    print("2. Drag clips to timeline")
+    print("3. Use markers for content structure")
+
+    return True
+
+def main():
+    """Main entry point"""
+
+    if len(sys.argv) < 2:
+        print("Usage: sf-resolve-create-project <project_name_or_path>")
+        print("Examples:")
+        print("  sf-resolve-create-project 'My YouTube Video'")
+        print("  sf-resolve-create-project /mnt/studio/Projects/20250921_Import")
+        sys.exit(1)
+
+    input_path = Path(sys.argv[1])
+
+    # Check if it's a project directory with metadata
+    if input_path.is_dir():
+        project_name = input_path.name
+        metadata_file = input_path / ".studioflow" / "resolve" / "clips_metadata.json"
+
+        if not metadata_file.exists():
+            print(f"Error: No clips metadata found at {metadata_file}")
+            sys.exit(1)
+
+        with open(metadata_file) as f:
+            data = json.load(f)
+            clips_metadata = data.get('clips', data) if isinstance(data, dict) else data
+    else:
+        # Just a project name
+        project_name = sys.argv[1]
+        clips_metadata = []
+        print("Warning: No clips metadata provided, creating empty project")
+
+    # Create the project
+    success = create_resolve_project(project_name, clips_metadata)
+
+    if not success:
+        print("\n❌ Failed to create project")
+        print("\nTroubleshooting:")
+        print("1. Make sure DaVinci Resolve is running")
+        print("2. Enable 'External scripting using' in Preferences > General")
+        print("3. Set it to 'Local' (not Network)")
+        print("4. Restart Resolve after changing settings")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

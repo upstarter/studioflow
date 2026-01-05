@@ -1,0 +1,265 @@
+# Advanced YouTube Creator Template
+# Optimized for real-world YouTube workflow
+
+name: youtube-advanced
+description: Professional YouTube creator workflow with all the details
+
+# Core directory structure
+directories:
+  # Pre-production Planning
+  - 00_planning/research
+  - 00_planning/scripts
+  - 00_planning/shot-list
+  
+  # Raw Footage Organization
+  - 01_footage/a-roll          # Main camera talking head
+  - 01_footage/b-roll          # Supporting footage
+  - 01_footage/screen-capture  # OBS/screen recordings
+  - 01_footage/phone           # Mobile footage
+  - 01_footage/drone           # Aerial footage
+  - 01_footage/stock           # Licensed stock footage
+  
+  # Audio Pipeline
+  - 02_audio/raw               # Original recordings
+  - 02_audio/music/licensed    # Properly licensed music
+  - 02_audio/music/library     # YouTube audio library
+  - 02_audio/sfx               # Sound effects
+  - 02_audio/voiceover         # VO recordings
+  - 02_audio/processed         # Cleaned/processed audio
+  
+  # Graphics & Visual Assets
+  - 03_graphics/thumbnails/main       # Primary thumbnail
+  - 03_graphics/thumbnails/ab-test    # A/B testing variants
+  - 03_graphics/thumbnails/psd        # Source files
+  - 03_graphics/titles                # Title cards
+  - 03_graphics/lower-thirds          # Name overlays
+  - 03_graphics/transitions           # Custom transitions
+  - 03_graphics/overlays              # Screen overlays
+  - 03_graphics/end-screen           # End screen elements
+  - 03_graphics/cards                 # YouTube cards
+  
+  # Sponsor/Partnership Content
+  - 04_sponsors/assets         # Sponsor-provided materials
+  - 04_sponsors/talking-points # Scripts/requirements
+  - 04_sponsors/exports        # Deliverables for sponsors
+  
+  # Color Grading
+  - 05_color/luts              # Color lookup tables
+  - 05_color/grades            # Project grades
+  - 05_color/reference         # Reference stills
+  
+  # Project Files
+  - 06_project/davinci         # DaVinci Resolve
+  - 06_project/premiere        # Adobe Premiere
+  - 06_project/after-effects   # Motion graphics
+  - 06_project/backups         # Project backups
+  
+  # Platform-Specific Exports
+  - 07_exports/youtube/4k      # 4K master
+  - 07_exports/youtube/1080p   # Standard HD
+  - 07_exports/shorts          # 9:16 vertical
+  - 07_exports/instagram/reels # 9:16 with IG specs
+  - 07_exports/instagram/posts # 1:1 square
+  - 07_exports/tiktok          # TikTok optimized
+  - 07_exports/twitter         # Twitter video specs
+  - 07_exports/podcast         # Audio-only version
+  - 07_exports/preview         # Quick previews
+  - 07_exports/sponsors        # Sponsor deliverables
+  
+  # Publishing Assets
+  - 08_publish/descriptions    # Platform descriptions
+  - 08_publish/tags            # SEO tags research
+  - 08_publish/captions        # SRT/VTT files
+  - 08_publish/transcripts     # Full transcripts
+  - 08_publish/schedule        # Publishing calendar
+  
+  # Analytics & Optimization
+  - 09_analytics/screenshots   # Performance metrics
+  - 09_analytics/notes         # What worked/didn't
+  - 09_analytics/ab-tests      # Thumbnail test results
+
+# Configuration options for users
+options:
+  # Additional workflows users might need
+  course:
+    - 10_course/segments       # Course module clips
+    - 10_course/slides         # Presentation materials
+    - 10_course/resources      # Downloadable resources
+    
+  podcast:
+    - 11_podcast/raw           # Full recording
+    - 11_podcast/chapters      # Chapter markers
+    - 11_podcast/clips         # Social media clips
+    
+  streaming:
+    - 12_stream/overlays       # Stream overlays
+    - 12_stream/alerts         # Alert graphics
+    - 12_stream/clips          # Stream highlights
+    
+  client:
+    - 13_client/briefs         # Client requirements
+    - 13_client/feedback       # Review notes
+    - 13_client/revisions      # Version history
+
+# File templates with smart defaults
+files:
+  - path: metadata.yml
+    content: |
+      # YouTube Video Metadata
+      video:
+        title: "{project_name}"
+        description: |
+          
+          📧 Newsletter: 
+          🔗 Links:
+          
+          Timestamps:
+          00:00 Intro
+          
+          #youtube #creator
+        
+        tags:
+          primary:
+            - 
+          secondary:
+            - 
+          longtail:
+            - 
+        
+        category: "Science & Technology"
+        language: "en"
+        license: "Standard YouTube License"
+        
+      thumbnail:
+        main: "03_graphics/thumbnails/main/thumbnail_v1.png"
+        testing:
+          - "03_graphics/thumbnails/ab-test/thumbnail_a.png"
+          - "03_graphics/thumbnails/ab-test/thumbnail_b.png"
+        
+      publishing:
+        visibility: "public"  # public, unlisted, private
+        premiere: false
+        scheduled_time: ""
+        playlist: ""
+        
+      monetization:
+        enabled: true
+        mid_roll_ads: true
+        sponsor_disclosure: false
+        
+      cards:
+        - time: "0:10"
+          type: "video"
+          link: ""
+        
+      end_screen:
+        template: "latest_video_subscribe"
+        elements:
+          - type: "video"
+            position: "left"
+          - type: "subscribe"
+            position: "right"
+      
+      music_credits:
+        - track: ""
+          artist: ""
+          source: "YouTube Audio Library"
+          license: ""
+  
+  - path: checklist.md
+    content: |
+      # Pre-Upload Checklist
+      
+      ## Content Review
+      - [ ] Opening hook is strong (0-15 seconds)
+      - [ ] Audio levels normalized (-12 to -6 dB)
+      - [ ] Color grading consistent
+      - [ ] No copyrighted content issues
+      - [ ] Sponsor segments properly marked
+      - [ ] End screen added (last 20 seconds)
+      - [ ] Cards added at relevant points
+      
+      ## Thumbnail
+      - [ ] Thumbnail tells story without title
+      - [ ] Face/emotion visible (if applicable)
+      - [ ] Text readable on mobile
+      - [ ] A/B test variant prepared
+      - [ ] Consistent with channel branding
+      
+      ## SEO Optimization
+      - [ ] Title under 60 characters
+      - [ ] Primary keyword in title
+      - [ ] Description first 125 chars compelling
+      - [ ] All relevant tags added (use all 500 chars)
+      - [ ] Closed captions uploaded
+      - [ ] Chapter markers added
+      
+      ## Export Settings
+      - [ ] 4K version exported (if applicable)
+      - [ ] 1080p version for faster processing
+      - [ ] Bitrate appropriate (12-15 Mbps for 1080p)
+      - [ ] Audio at -14 LUFS for YouTube
+      
+      ## Cross-Platform
+      - [ ] Shorts version created (if applicable)
+      - [ ] Instagram Reel exported
+      - [ ] TikTok version prepared
+      - [ ] Twitter teaser ready
+      
+      ## Analytics Prep
+      - [ ] UTM parameters for description links
+      - [ ] Custom thumbnail for testing
+      - [ ] Publishing time optimized
+      - [ ] Community post drafted
+  
+  - path: 04_sponsors/README.md
+    content: |
+      # Sponsor Integration Guide
+      
+      ## Sponsor Segments
+      - Pre-roll: 0:00-0:15
+      - Mid-roll: {calculate based on video length}
+      - Post-roll: Before end screen
+      
+      ## Required Deliverables
+      - [ ] Main integration in video
+      - [ ] Dedicated 60-second segment
+      - [ ] Link in description
+      - [ ] Pinned comment (if required)
+      - [ ] Community post (if required)
+      
+      ## Tracking
+      - Promo code: 
+      - Tracking link: 
+      - Attribution window: 
+  
+  - path: .studioflow
+    content: |
+      # StudioFlow Project Configuration
+      project_type: youtube
+      created: {date}
+      
+      workflow:
+        style: "talking-head"  # talking-head, vlog, tutorial, review
+        length: "standard"     # short, standard (8-12m), long (20m+)
+        frequency: "weekly"    # daily, weekly, biweekly, monthly
+      
+      export_presets:
+        youtube_4k:
+          resolution: "3840x2160"
+          fps: 30
+          codec: "h264"
+          bitrate: "45M"
+          
+        youtube_1080p:
+          resolution: "1920x1080"
+          fps: 30
+          codec: "h264"
+          bitrate: "12M"
+          
+        shorts:
+          resolution: "1080x1920"
+          fps: 30
+          codec: "h264"
+          bitrate: "15M"
+          max_duration: 60

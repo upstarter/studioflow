@@ -1,0 +1,280 @@
+#!/usr/bin/env python3
+"""
+StudioFlow Resolve Project Generator
+Creates importable project files with media and settings
+"""
+
+import json
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from datetime import datetime
+import subprocess
+
+class ResolveProjectGenerator:
+    def __init__(self):
+        self.template = {
+            "resolution": (3840, 2160),
+            "framerate": 29.97,
+            "color_space": "Rec.709",
+            "audio_target": -14,  # LUFS
+        }
+
+    def generate_edl(self, clips_metadata, output_path):
+        """Generate EDL with all clips for Resolve import"""
+        edl_content = f"""TITLE: Creator_AI_Hub_Episode_1
+FCM: NON-DROP FRAME
+
+001  AX       V     C        00:00:00:00 00:00:10:00 00:00:00:00 00:00:10:00
+* FROM CLIP NAME: {clips_metadata[0].get('filename', 'CLIP001')}
+* SOURCE FILE: {clips_metadata[0].get('path', '')}
+
+"""
+
+        with open(output_path, 'w') as f:
+            f.write(edl_content)
+
+        return output_path
+
+    def generate_xml_timeline(self, project_name, clips_metadata, output_path):
+        """Generate Resolve-compatible FCPXML format"""
+
+        # Create FCPXML structure for Resolve
+        root = ET.Element("fcpxml", version="1.9")
+
+        # Add resources
+        resources = ET.SubElement(root, "resources")
+
+        # Add format definition
+        format_elem = ET.SubElement(resources, "format",
+                                   id="r1",
+                                   name="FFVideoFormat3840x2160p2997",
+                                   frameDuration="1001/30000s",
+                                   width="3840",
+                                   height="2160")
+
+        # Add assets for each clip
+        asset_refs = {}
+
+        for i, clip in enumerate(clips_metadata):
+            asset_id = f"r{i+2}"
+            clip_path = clip.get('path', f"/mnt/ingest/Camera/Pool/2025-09/20250920_Creator_Ai_Hub_Episode_1_IMPORTS/M4ROOT/CLIP/{clip['filename']}")
+            duration_frames = int(clip.get('duration', 30) * 29.97)
+
+            # Add asset
+            asset = ET.SubElement(resources, "asset",
+                                 id=asset_id,
+                                 name=clip['filename'],
+                                 src=f"file://{clip_path}",
+                                 start="0s",
+                                 duration=f"{duration_frames * 1001}/30000s",
+                                 hasVideo="1",
+                                 format="r1",
+                                 hasAudio="1",
+                                 audioSources="1",
+                                 audioChannels="2",
+                                 audioRate="48000")
+
+            asset_refs[clip['filename']] = asset_id
+
+        # Add library
+        library = ET.SubElement(root, "library")
+
+        # Create events (bins) for categories
+        categories = {}
+        for clip in clips_metadata:
+            category = clip.get('category', 'general')
+            if category not in categories:
+                categories[category] = []
+            categories[category].append(clip)
+
+        # Add main event with project
+        event = ET.SubElement(library, "event", name=project_name)
+
+        # Add project with sequence
+        project_elem = ET.SubElement(event, "project", name="Main_Edit_4K30_YouTube")
+
+        # Add sequence
+        sequence = ET.SubElement(project_elem, "sequence",
+                                duration="18000000/30000s",
+                                format="r1",
+                                tcStart="0s",
+                                tcFormat="NDF",
+                                audioLayout="stereo",
+                                audioRate="48k")
+
+        # Add spine (primary storyline)
+        spine = ET.SubElement(sequence, "spine")
+
+        # Add clips to timeline
+        current_offset = 0
+        for category, clips in categories.items():
+            for clip in clips[:3]:  # Add first 3 clips from each category as example
+                if clip['filename'] in asset_refs:
+                    duration_frames = int(clip.get('duration', 30) * 29.97)
+
+                    # Add asset-clip to spine
+                    asset_clip = ET.SubElement(spine, "asset-clip",
+                                              name=clip['filename'],
+                                              offset=f"{current_offset * 1001}/30000s",
+                                              ref=asset_refs[clip['filename']],
+                                              duration=f"{duration_frames * 1001}/30000s",
+                                              format="r1",
+                                              tcFormat="NDF")
+
+                    current_offset += duration_frames
+
+        # Add markers as chapter-markers
+        marker_data = [
+            (0, "HOOK - Opening hook"),
+            (600, "INTRO - Introduction"),
+            (1350, "MAIN - Main content"),
+            (13500, "PAYOFF - Key takeaways"),
+            (16200, "CTA - Call to action")
+        ]
+
+        for frame, text in marker_data:
+            chapter = ET.SubElement(sequence, "chapter-marker",
+                                   start=f"{frame * 1001}/30000s",
+                                   value=text)
+
+        # Write FCPXML with proper formatting
+        tree = ET.ElementTree(root)
+        ET.indent(tree, space="  ")
+        tree.write(output_path, encoding='utf-8', xml_declaration=True)
+
+        return output_path
+
+    def generate_project_files(self, project_path, clips_metadata):
+        """Generate all necessary files for Resolve import"""
+
+        project_name = project_path.name
+        output_dir = project_path / ".studioflow" / "resolve"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        files_created = []
+
+        # 1. Generate FCPXML timeline (best for Resolve)
+        xml_path = output_dir / f"{project_name}.fcpxml"
+        self.generate_xml_timeline(project_name, clips_metadata, xml_path)
+        files_created.append(("FCPXML Timeline", xml_path))
+
+        # 2. Generate EDL as backup
+        edl_path = output_dir / f"{project_name}.edl"
+        self.generate_edl(clips_metadata, edl_path)
+        files_created.append(("EDL", edl_path))
+
+        # 3. Create import instructions
+        instructions_path = output_dir / "IMPORT_TO_RESOLVE.txt"
+        with open(instructions_path, 'w') as f:
+            f.write(f"""RESOLVE IMPORT INSTRUCTIONS
+===========================
+
+QUICKEST METHOD:
+1. Open DaVinci Resolve
+2. Create New Project or Open Existing
+3. File → Import → Timeline → Import AAF, EDL, XML, FCPXML...
+4. Select: {xml_path}
+5. Check "Import clips to Media Pool"
+6. Click "OK"
+
+This will import:
+- All {len(clips_metadata)} clips organized into bins
+- Timeline with YouTube-optimized settings
+- Markers for content structure
+
+PROJECT SETTINGS TO APPLY:
+- Timeline Resolution: 3840x2160
+- Timeline Framerate: 29.97
+- Color Science: DaVinci YRGB
+- Color Space: Rec.709
+- Audio Target: -14 LUFS
+
+MEDIA LOCATIONS:
+""")
+            # Add unique paths
+            paths = set(Path(clip.get('path', '')).parent for clip in clips_metadata if clip.get('path'))
+            for path in paths:
+                f.write(f"- {path}\n")
+
+        files_created.append(("Instructions", instructions_path))
+
+        # 4. Create project metadata
+        metadata_path = output_dir / "project_metadata.json"
+        with open(metadata_path, 'w') as f:
+            json.dump({
+                "project_name": project_name,
+                "created": datetime.now().isoformat(),
+                "resolution": "3840x2160",
+                "framerate": 29.97,
+                "clips_count": len(clips_metadata),
+                "categories": list(set(clip.get('category', 'general') for clip in clips_metadata)),
+                "total_duration": sum(clip.get('duration', 0) for clip in clips_metadata),
+                "template": "YouTube 4K30 Optimized"
+            }, f, indent=2)
+
+        files_created.append(("Metadata", metadata_path))
+
+        print(f"\n✅ Generated Resolve project files in: {output_dir}")
+        for file_type, path in files_created:
+            print(f"   - {file_type}: {path.name}")
+
+        return xml_path
+
+def main():
+    """Test the generator with sample data"""
+    import sys
+
+    try:
+        if len(sys.argv) < 2:
+            print("Usage: sf-resolve-project-generator <clips_metadata.json>")
+            print("   or: sf-resolve-project-generator <project_path>")
+            sys.exit(1)
+
+        input_path = Path(sys.argv[1])
+
+    # Check if it's a metadata file or project directory
+    if input_path.suffix == '.json':
+        with open(input_path) as f:
+            data = json.load(f)
+            # Extract clips array from metadata
+            clips_metadata = data.get('clips', data) if isinstance(data, dict) else data
+        project_path = input_path.parent.parent  # Go up from .studioflow/
+    else:
+        project_path = input_path
+        # Try both possible filenames for clips data
+        clips_data = []
+        for clips_filename in ['clips.json', 'clips_metadata.json']:
+            metadata_file = project_path / ".studioflow" / clips_filename
+            if metadata_file.exists():
+                with open(metadata_file) as f:
+                    data = json.load(f)
+                    clips_metadata = data.get('clips', data) if isinstance(data, dict) else data
+                break
+        else:
+            print(f"Error: No clips.json or clips_metadata.json found in {project_path}")
+            sys.exit(1)
+
+        generator = ResolveProjectGenerator()
+        xml_path = generator.generate_project_files(project_path, clips_metadata)
+
+        print(f"\n📽️ TO IMPORT IN RESOLVE:")
+        print(f"   1. File → Import → Timeline → Import AAF, EDL, XML, FCPXML...")
+        print(f"   2. Select: {xml_path}")
+        print(f"   3. Check 'Import clips to Media Pool'")
+        print(f"   4. Your project will be ready with all media organized!")
+
+    except KeyboardInterrupt:
+        print("\n⚠️  Generation cancelled by user")
+        sys.exit(1)
+    except FileNotFoundError as e:
+        print(f"❌ File not found: {e}")
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON in clips file: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Error generating Resolve project files: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

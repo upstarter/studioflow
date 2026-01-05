@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""sf-audio - Compatibility wrapper for new CLI"""
+import sys
+import subprocess
+import os
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+sf_command = os.path.join(script_dir, "sf")
+
+# Map old audio commands to new ones
+if len(sys.argv) > 1 and sys.argv[1] == "transcribe":
+    # sf-audio transcribe -> sf media transcribe
+    args = [sf_command, "media", "transcribe"] + sys.argv[2:]
+else:
+    # Default to media subcommand
+    args = [sf_command, "media"] + sys.argv[1:]
+
+sys.exit(subprocess.run(args).returncode)

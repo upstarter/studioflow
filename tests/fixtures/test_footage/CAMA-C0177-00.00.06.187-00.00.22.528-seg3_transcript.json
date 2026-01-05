@@ -1,0 +1,451 @@
+{
+  "text": "a significant increase in climate change awareness. The data shows a 50% increase in public concern. The problem we face is serious. We need immediate action to address this crisis. Scientists agree that time is running out.",
+  "language": "en",
+  "duration": 14.92,
+  "words": [
+    {
+      "word": "a",
+      "start": 0.0,
+      "end": 0.22
+    },
+    {
+      "word": "significant",
+      "start": 0.22,
+      "end": 0.64
+    },
+    {
+      "word": "increase",
+      "start": 0.64,
+      "end": 1.14
+    },
+    {
+      "word": "in",
+      "start": 1.14,
+      "end": 1.38
+    },
+    {
+      "word": "climate",
+      "start": 1.38,
+      "end": 1.6
+    },
+    {
+      "word": "change",
+      "start": 1.6,
+      "end": 1.98
+    },
+    {
+      "word": "awareness.",
+      "start": 1.98,
+      "end": 2.42
+    },
+    {
+      "word": "The",
+      "start": 3.22,
+      "end": 3.34
+    },
+    {
+      "word": "data",
+      "start": 3.34,
+      "end": 3.56
+    },
+    {
+      "word": "shows",
+      "start": 3.56,
+      "end": 3.86
+    },
+    {
+      "word": "a",
+      "start": 3.86,
+      "end": 4.06
+    },
+    {
+      "word": "50",
+      "start": 4.06,
+      "end": 4.34
+    },
+    {
+      "word": "%",
+      "start": 4.34,
+      "end": 4.66
+    },
+    {
+      "word": "increase",
+      "start": 4.66,
+      "end": 5.06
+    },
+    {
+      "word": "in",
+      "start": 5.06,
+      "end": 5.28
+    },
+    {
+      "word": "public",
+      "start": 5.28,
+      "end": 5.52
+    },
+    {
+      "word": "concern.",
+      "start": 5.52,
+      "end": 5.96
+    },
+    {
+      "word": "The",
+      "start": 8.38,
+      "end": 8.94
+    },
+    {
+      "word": "problem",
+      "start": 8.94,
+      "end": 9.28
+    },
+    {
+      "word": "we",
+      "start": 9.28,
+      "end": 9.6
+    },
+    {
+      "word": "face",
+      "start": 9.6,
+      "end": 9.84
+    },
+    {
+      "word": "is",
+      "start": 9.84,
+      "end": 10.0
+    },
+    {
+      "word": "serious.",
+      "start": 10.0,
+      "end": 10.4
+    },
+    {
+      "word": "We",
+      "start": 10.6,
+      "end": 10.68
+    },
+    {
+      "word": "need",
+      "start": 10.68,
+      "end": 10.86
+    },
+    {
+      "word": "immediate",
+      "start": 10.86,
+      "end": 11.18
+    },
+    {
+      "word": "action",
+      "start": 11.18,
+      "end": 11.58
+    },
+    {
+      "word": "to",
+      "start": 11.58,
+      "end": 11.8
+    },
+    {
+      "word": "address",
+      "start": 11.8,
+      "end": 12.08
+    },
+    {
+      "word": "this",
+      "start": 12.08,
+      "end": 12.32
+    },
+    {
+      "word": "crisis.",
+      "start": 12.32,
+      "end": 12.82
+    },
+    {
+      "word": "Scientists",
+      "start": 13.14,
+      "end": 13.4
+    },
+    {
+      "word": "agree",
+      "start": 13.4,
+      "end": 13.86
+    },
+    {
+      "word": "that",
+      "start": 13.86,
+      "end": 14.04
+    },
+    {
+      "word": "time",
+      "start": 14.04,
+      "end": 14.3
+    },
+    {
+      "word": "is",
+      "start": 14.3,
+      "end": 14.48
+    },
+    {
+      "word": "running",
+      "start": 14.48,
+      "end": 14.68
+    },
+    {
+      "word": "out.",
+      "start": 14.68,
+      "end": 14.92
+    }
+  ],
+  "segments": [
+    {
+      "id": 0,
+      "start": 0.0,
+      "end": 5.96,
+      "text": "a significant increase in climate change awareness. The data shows a 50% increase in public concern.",
+      "words": [
+        {
+          "word": " a",
+          "start": 0.0,
+          "end": 0.22,
+          "probability": 0.439767986536026
+        },
+        {
+          "word": " significant",
+          "start": 0.22,
+          "end": 0.64,
+          "probability": 0.9958517551422119
+        },
+        {
+          "word": " increase",
+          "start": 0.64,
+          "end": 1.14,
+          "probability": 0.9972044825553894
+        },
+        {
+          "word": " in",
+          "start": 1.14,
+          "end": 1.38,
+          "probability": 0.9956186413764954
+        },
+        {
+          "word": " climate",
+          "start": 1.38,
+          "end": 1.6,
+          "probability": 0.9942308664321899
+        },
+        {
+          "word": " change",
+          "start": 1.6,
+          "end": 1.98,
+          "probability": 0.9956262111663818
+        },
+        {
+          "word": " awareness.",
+          "start": 1.98,
+          "end": 2.42,
+          "probability": 0.992638111114502
+        },
+        {
+          "word": " The",
+          "start": 3.22,
+          "end": 3.34,
+          "probability": 0.9893715381622314
+        },
+        {
+          "word": " data",
+          "start": 3.34,
+          "end": 3.56,
+          "probability": 0.9949924349784851
+        },
+        {
+          "word": " shows",
+          "start": 3.56,
+          "end": 3.86,
+          "probability": 0.997198224067688
+        },
+        {
+          "word": " a",
+          "start": 3.86,
+          "end": 4.06,
+          "probability": 0.9940495491027832
+        },
+        {
+          "word": " 50",
+          "start": 4.06,
+          "end": 4.34,
+          "probability": 0.969308614730835
+        },
+        {
+          "word": "%",
+          "start": 4.34,
+          "end": 4.66,
+          "probability": 0.7668843865394592
+        },
+        {
+          "word": " increase",
+          "start": 4.66,
+          "end": 5.06,
+          "probability": 0.9944127202033997
+        },
+        {
+          "word": " in",
+          "start": 5.06,
+          "end": 5.28,
+          "probability": 0.9993680119514465
+        },
+        {
+          "word": " public",
+          "start": 5.28,
+          "end": 5.52,
+          "probability": 0.998134434223175
+        },
+        {
+          "word": " concern.",
+          "start": 5.52,
+          "end": 5.96,
+          "probability": 0.997016429901123
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "start": 8.38,
+      "end": 12.82,
+      "text": "The problem we face is serious. We need immediate action to address this crisis.",
+      "words": [
+        {
+          "word": " The",
+          "start": 8.38,
+          "end": 8.94,
+          "probability": 0.9869329333305359
+        },
+        {
+          "word": " problem",
+          "start": 8.94,
+          "end": 9.28,
+          "probability": 0.9991707801818848
+        },
+        {
+          "word": " we",
+          "start": 9.28,
+          "end": 9.6,
+          "probability": 0.9926095604896545
+        },
+        {
+          "word": " face",
+          "start": 9.6,
+          "end": 9.84,
+          "probability": 0.9890938997268677
+        },
+        {
+          "word": " is",
+          "start": 9.84,
+          "end": 10.0,
+          "probability": 0.9905648231506348
+        },
+        {
+          "word": " serious.",
+          "start": 10.0,
+          "end": 10.4,
+          "probability": 0.9942078590393066
+        },
+        {
+          "word": " We",
+          "start": 10.6,
+          "end": 10.68,
+          "probability": 0.993780791759491
+        },
+        {
+          "word": " need",
+          "start": 10.68,
+          "end": 10.86,
+          "probability": 0.9988901019096375
+        },
+        {
+          "word": " immediate",
+          "start": 10.86,
+          "end": 11.18,
+          "probability": 0.9941040873527527
+        },
+        {
+          "word": " action",
+          "start": 11.18,
+          "end": 11.58,
+          "probability": 0.9956035614013672
+        },
+        {
+          "word": " to",
+          "start": 11.58,
+          "end": 11.8,
+          "probability": 0.9986997842788696
+        },
+        {
+          "word": " address",
+          "start": 11.8,
+          "end": 12.08,
+          "probability": 0.9983816146850586
+        },
+        {
+          "word": " this",
+          "start": 12.08,
+          "end": 12.32,
+          "probability": 0.9982905983924866
+        },
+        {
+          "word": " crisis.",
+          "start": 12.32,
+          "end": 12.82,
+          "probability": 0.9990062117576599
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "start": 13.14,
+      "end": 14.92,
+      "text": "Scientists agree that time is running out.",
+      "words": [
+        {
+          "word": " Scientists",
+          "start": 13.14,
+          "end": 13.4,
+          "probability": 0.946300208568573
+        },
+        {
+          "word": " agree",
+          "start": 13.4,
+          "end": 13.86,
+          "probability": 0.9935965538024902
+        },
+        {
+          "word": " that",
+          "start": 13.86,
+          "end": 14.04,
+          "probability": 0.9880351424217224
+        },
+        {
+          "word": " time",
+          "start": 14.04,
+          "end": 14.3,
+          "probability": 0.9926149845123291
+        },
+        {
+          "word": " is",
+          "start": 14.3,
+          "end": 14.48,
+          "probability": 0.9987576007843018
+        },
+        {
+          "word": " running",
+          "start": 14.48,
+          "end": 14.68,
+          "probability": 0.9971815347671509
+        },
+        {
+          "word": " out.",
+          "start": 14.68,
+          "end": 14.92,
+          "probability": 0.9977899789810181
+        }
+      ]
+    }
+  ]
+}

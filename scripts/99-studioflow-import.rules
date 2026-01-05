@@ -1,0 +1,17 @@
+# StudioFlow Auto-Import for Camera Cards
+# Install: sudo cp this to /etc/udev/rules.d/
+
+# Only trigger on block device partitions being added
+# Script will verify if it's actually a video card
+
+# SD cards via USB reader (exFAT - typical for cameras)
+ACTION=="add", KERNEL=="sd[a-z][0-9]", SUBSYSTEM=="block", ENV{ID_FS_TYPE}=="exfat", RUN+="/mnt/dev/studioflow/scripts/studioflow-card-import.sh %k"
+
+# SD cards via USB reader (FAT32 - older cameras)
+ACTION=="add", KERNEL=="sd[a-z][0-9]", SUBSYSTEM=="block", ENV{ID_FS_TYPE}=="vfat", RUN+="/mnt/dev/studioflow/scripts/studioflow-card-import.sh %k"
+
+# Built-in SD card slot
+ACTION=="add", KERNEL=="mmcblk[0-9]p[0-9]", SUBSYSTEM=="block", RUN+="/mnt/dev/studioflow/scripts/studioflow-card-import.sh %k"
+
+# CFexpress cards (NVMe)
+ACTION=="add", KERNEL=="nvme[0-9]n[0-9]p[0-9]", SUBSYSTEM=="block", ENV{ID_FS_TYPE}=="exfat", RUN+="/mnt/dev/studioflow/scripts/studioflow-card-import.sh %k"

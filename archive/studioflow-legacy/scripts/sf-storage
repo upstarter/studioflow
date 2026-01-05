@@ -1,0 +1,258 @@
+#!/usr/bin/env python3
+"""
+sf-storage - StudioFlow storage tier manager
+Manage project movement between storage tiers
+"""
+
+import sys
+import argparse
+import shutil
+from pathlib import Path
+from datetime import datetime, timedelta
+
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import (
+    Project, JsonStream, STORAGE_TIERS,
+    list_projects, find_project, get_storage_status, CliHelper
+)
+
+def storage_status():
+    """Show storage tier status"""
+    status = get_storage_status()
+
+    print("Storage Tier Status")
+    print("=" * 60)
+
+    for tier, info in status.items():
+        # Calculate health indicator
+        percent = info["percent"]
+        if percent < 70:
+            icon = "🟢"
+        elif percent < 90:
+            icon = "🟡"
+        else:
+            icon = "🔴"
+
+        print(f"{icon} {tier:10} {info['used_gb']:7.1f} / {info['total_gb']:7.1f} GB "
+              f"({percent:3.0f}%) - {info['free_gb']:.1f} GB free")
+
+    # Also output as JSON for piping
+    JsonStream.emit(status)
+
+def move_project(name: str, tier: str):
+    """Move project to different storage tier"""
+    project = CliHelper.require_project(name)
+
+    if tier not in STORAGE_TIERS:
+        JsonStream.error(f"Invalid tier: {tier}")
+
+    target_path = STORAGE_TIERS[tier]
+    if not target_path.exists():
+        JsonStream.error(f"Target tier not available: {tier}")
+
+    # Handle special tier logic
+    if tier == "archive":
+        # Archive goes to year-based subdirectory
+        year = datetime.now().year
+        target_path = target_path / str(year) / "projects"
+        target_path.mkdir(parents=True, exist_ok=True)
+
+    new_path = target_path / project.name
+
+    # Check if target exists
+    if new_path.exists():
+        JsonStream.error(f"Project already exists in {tier}: {project.name}")
+
+    # Move the project
+    print(f"Moving {project.name} to {tier}...")
+    shutil.move(str(project.path), str(new_path))
+
+    # Update manifest with new location
+    moved_project = Project(new_path)
+    manifest = moved_project.manifest.copy()
+    manifest["storage_tier"] = tier
+    manifest["moved_date"] = datetime.now().isoformat()
+    moved_project.save_manifest(manifest)
+
+    # Emit event
+    moved_project.emit_event("moved", {"from": "active", "to": tier})
+
+    JsonStream.success(
+        f"Moved {project.name} to {tier}",
+        {"new_path": str(new_path)}
+    )
+
+def archive_old_projects(days: int = 30, dry_run: bool = False):
+    """Archive projects older than specified days"""
+    cutoff_date = datetime.now() - timedelta(days=days)
+    projects_to_archive = []
+
+    for project in list_projects():
+        try:
+            created = datetime.fromisoformat(project.created)
+            if created < cutoff_date:
+                projects_to_archive.append(project)
+        except:
+            continue
+
+    if not projects_to_archive:
+        print(f"No projects older than {days} days")
+        return
+
+    print(f"Found {len(projects_to_archive)} projects to archive:")
+    for p in projects_to_archive:
+        print(f"  - {p.name} (created: {p.created[:10]})")
+
+    if dry_run:
+        print("\n[DRY RUN] No changes made")
+        return
+
+    if not CliHelper.confirm(f"Archive {len(projects_to_archive)} projects?"):
+        JsonStream.error("Cancelled")
+
+    # Archive each project
+    for project in projects_to_archive:
+        try:
+            move_project(project.name, "archive")
+            print(f"✓ Archived {project.name}")
+        except Exception as e:
+            print(f"✗ Failed to archive {project.name}: {e}")
+
+def optimize_storage():
+    """Optimize storage usage across tiers"""
+    status = get_storage_status()
+
+    recommendations = []
+
+    # Check each tier
+    for tier, info in status.items():
+        if info["percent"] > 90:
+            recommendations.append({
+                "tier": tier,
+                "action": "critical",
+                "message": f"{tier} is {info['percent']}% full - immediate action needed"
+            })
+        elif info["percent"] > 70:
+            recommendations.append({
+                "tier": tier,
+                "action": "warning",
+                "message": f"{tier} is {info['percent']}% full - consider cleanup"
+            })
+
+    # Check for old projects in active tier
+    old_projects = []
+    for project in list_projects():
+        try:
+            created = datetime.fromisoformat(project.created)
+            age_days = (datetime.now() - created).days
+            if age_days > 30:
+                old_projects.append((project.name, age_days))
+        except:
+            continue
+
+    if old_projects:
+        recommendations.append({
+            "tier": "active",
+            "action": "suggestion",
+            "message": f"{len(old_projects)} projects older than 30 days could be archived"
+        })
+
+    # Output recommendations
+    if recommendations:
+        print("\nStorage Optimization Recommendations:")
+        print("=" * 60)
+        for rec in recommendations:
+            icon = "🔴" if rec["action"] == "critical" else "🟡" if rec["action"] == "warning" else "💡"
+            print(f"{icon} {rec['message']}")
+
+    JsonStream.emit({"recommendations": recommendations})
+
+def link_project(name: str, target: str):
+    """Create symlink to project in another location"""
+    project = CliHelper.require_project(name)
+
+    target_path = Path(target).expanduser()
+    if not target_path.parent.exists():
+        JsonStream.error(f"Target directory does not exist: {target_path.parent}")
+
+    # Create symlink
+    if target_path.exists():
+        JsonStream.error(f"Target already exists: {target_path}")
+
+    target_path.symlink_to(project.path)
+
+    JsonStream.success(
+        f"Created link to {project.name}",
+        {"link": str(target_path), "target": str(project.path)}
+    )
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="sf-storage - StudioFlow storage tier manager",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  sf-storage status
+  sf-storage move "Old Project" archive
+  sf-storage archive --older-than 30
+  sf-storage optimize
+  sf-storage link "Project" ~/Desktop/current-project
+
+Storage Tiers:
+  ingest  - Hot tier for camera imports
+  active  - Working projects (default)
+  render  - Export/render output
+  archive - Cold storage for completed projects
+  nas     - Network attached storage
+        """
+    )
+
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # Status command
+    status_parser = subparsers.add_parser("status", help="Show storage status")
+
+    # Move command
+    move_parser = subparsers.add_parser("move", help="Move project to tier")
+    move_parser.add_argument("name", help="Project name")
+    move_parser.add_argument("tier", choices=list(STORAGE_TIERS.keys()),
+                            help="Target storage tier")
+
+    # Archive command
+    archive_parser = subparsers.add_parser("archive", help="Archive old projects")
+    archive_parser.add_argument("--older-than", type=int, default=30,
+                               help="Days old (default: 30)")
+    archive_parser.add_argument("--dry-run", action="store_true",
+                               help="Preview without changes")
+
+    # Optimize command
+    optimize_parser = subparsers.add_parser("optimize",
+                                           help="Storage optimization suggestions")
+
+    # Link command
+    link_parser = subparsers.add_parser("link", help="Create project symlink")
+    link_parser.add_argument("name", help="Project name")
+    link_parser.add_argument("target", help="Link target path")
+
+    args = parser.parse_args()
+
+    if args.command == "status":
+        storage_status()
+
+    elif args.command == "move":
+        move_project(args.name, args.tier)
+
+    elif args.command == "archive":
+        archive_old_projects(args.older_than, args.dry_run)
+
+    elif args.command == "optimize":
+        optimize_storage()
+
+    elif args.command == "link":
+        link_project(args.name, args.target)
+
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()

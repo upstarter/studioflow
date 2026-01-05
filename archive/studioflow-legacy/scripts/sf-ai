@@ -1,0 +1,445 @@
+#!/usr/bin/env python3
+"""
+sf-ai - AI assistant integration
+Script writing, idea generation, content planning
+Works with ANY AI provider through simple stdin/stdout
+"""
+
+import sys
+import json
+import argparse
+from pathlib import Path
+from datetime import datetime
+
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import Project, JsonStream, find_project, CliHelper
+
+# Import AI provider
+sys.path.insert(0, str(Path(__file__).parent))
+try:
+    from ai_provider import SmartAI
+    ai = SmartAI()
+except ImportError:
+    ai = None
+
+def generate_script(project_name: str, style: str = "educational", topic: str = None):
+    """Generate video script using AI or template"""
+    project = CliHelper.require_project(project_name)
+
+    # If AI is available and topic provided, use it
+    if ai and topic:
+        print(f"🤖 Generating {style} script about: {topic}")
+        script = ai.generate_script(topic, style=style, duration=10)
+
+        # Save to project
+        script_file = project.path / "07_DOCS" / f"script_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+        script_file.parent.mkdir(parents=True, exist_ok=True)
+        script_file.write_text(script)
+
+        print(f"✅ Script saved to: {script_file}")
+        JsonStream.success("AI script generated", {"file": str(script_file)})
+        return script
+
+    # Otherwise use templates
+    return generate_template_script(project, style)
+
+def generate_template_script(project, style: str = "educational"):
+    """Generate script from templates"""
+
+    styles = {
+        "educational": """# {TITLE} - Educational Script
+
+## HOOK (0-15 seconds)
+[Strong opening that grabs attention]
+"Have you ever wondered..."
+"What if I told you..."
+"Here's something that will change how you..."
+
+## INTRODUCTION (15-30 seconds)
+- Who am I
+- What we'll learn today
+- Why it matters
+
+## MAIN CONTENT
+
+### Section 1: [Topic] (2-3 minutes)
+**Key Point:**
+- Explanation
+- Example
+- Visual cue: [Show screenshot/demo]
+
+### Section 2: [Topic] (2-3 minutes)
+**Key Point:**
+- Explanation
+- Example
+- Visual cue: [Show screenshot/demo]
+
+### Section 3: [Topic] (2-3 minutes)
+**Key Point:**
+- Explanation
+- Example
+- Visual cue: [Show screenshot/demo]
+
+## SUMMARY (30 seconds)
+- Recap key points
+- Main takeaway
+
+## CALL TO ACTION (15 seconds)
+- Like and subscribe
+- Comment question
+- Watch next video
+
+---
+NOTES:
+- Target length: 8-10 minutes
+- Speaking pace: 150 words/minute
+- Total words: ~1200-1500
+""",
+
+        "entertainment": """# {TITLE} - Entertainment Script
+
+## COLD OPEN (0-10 seconds)
+[Teaser of the best moment]
+*Jump cut to exciting part*
+
+## INTRO (10-30 seconds)
+- Energetic greeting
+- What's happening today
+- Set expectations
+
+## STORY ARC
+
+### Act 1: Setup (2-3 minutes)
+- Context/background
+- Build tension
+- Introduce challenge
+
+### Act 2: Journey (4-5 minutes)
+- Main content/adventure
+- Obstacles and attempts
+- Building to climax
+
+### Act 3: Resolution (2 minutes)
+- Climax moment
+- Resolution
+- Reflection
+
+## OUTRO (30 seconds)
+- Wrap up
+- Call to action
+- Tease next video
+
+---
+STYLE NOTES:
+- High energy
+- Quick cuts
+- Humor elements
+- Personal stories
+""",
+
+        "review": """# {TITLE} - Review Script
+
+## INTRODUCTION (30 seconds)
+- Product/service name
+- Why reviewing
+- First impressions
+
+## SPECIFICATIONS (1 minute)
+- Key specs
+- Price point
+- Availability
+
+## TESTING SECTIONS
+
+### Test 1: [Feature] (2-3 minutes)
+- Setup
+- Test process
+- Results
+- Comparison to claims
+
+### Test 2: [Feature] (2-3 minutes)
+- Setup
+- Test process
+- Results
+- Comparison to competitors
+
+### Test 3: [Feature] (2-3 minutes)
+- Setup
+- Test process
+- Results
+- Real-world usage
+
+## PROS & CONS (1 minute)
+**Pros:**
+-
+-
+-
+
+**Cons:**
+-
+-
+-
+
+## VERDICT (1 minute)
+- Final score: X/10
+- Who it's for
+- Who should avoid
+- Value proposition
+
+## CONCLUSION (30 seconds)
+- Summary
+- Recommendation
+- Links in description
+
+---
+REVIEW CRITERIA:
+- Be objective
+- Show, don't just tell
+- Include b-roll
+- Compare to alternatives
+"""
+    }
+
+    script_template = styles.get(style, styles["educational"])
+
+    # Save to project
+    script_file = project.path / "07_DOCS" / "SCRIPT" / f"script_{style}.md"
+    script_file.parent.mkdir(parents=True, exist_ok=True)
+    script_file.write_text(script_template.replace("{TITLE}", project_name))
+
+    JsonStream.success(
+        f"Generated {style} script template",
+        {"path": str(script_file)}
+    )
+
+def generate_ideas(topic: str, count: int = 10):
+    """Generate video idea list"""
+    # Video idea patterns based on YouTube best practices
+    patterns = [
+        f"How to {topic}",
+        f"{topic} for Beginners",
+        f"Why {topic} Doesn't Work (And What Does)",
+        f"The Truth About {topic}",
+        f"I Tried {topic} for 30 Days",
+        f"{topic}: Everything You Need to Know",
+        f"5 Mistakes Everyone Makes with {topic}",
+        f"{topic} vs [Alternative]: Which is Better?",
+        f"The Hidden Cost of {topic}",
+        f"{topic} in 2025: What's Changed",
+        f"Stop Doing {topic} Wrong",
+        f"The Ultimate {topic} Guide",
+        f"Is {topic} Worth It?",
+        f"{topic}: Expectations vs Reality",
+        f"My {topic} Workflow",
+        f"Why I Quit {topic}",
+        f"The Science Behind {topic}",
+        f"{topic} Tips Nobody Talks About",
+        f"Building {topic} from Scratch",
+        f"Debugging {topic} Problems"
+    ]
+
+    ideas = []
+    for i, pattern in enumerate(patterns[:count]):
+        ideas.append({
+            "id": i + 1,
+            "title": pattern,
+            "hook": f"Opening hook for {pattern}",
+            "thumbnail_text": pattern.upper()[:20],
+            "estimated_length": "8-10 minutes",
+            "difficulty": "medium"
+        })
+
+    # Save ideas
+    ideas_file = Path.home() / ".cache" / "studioflow" / f"ideas_{topic.replace(' ', '_')}.json"
+    ideas_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(ideas_file, 'w') as f:
+        json.dump({"topic": topic, "ideas": ideas, "generated": datetime.now().isoformat()}, f, indent=2)
+
+    print(f"💡 Video Ideas for: {topic}")
+    print("=" * 60)
+    for idea in ideas:
+        print(f"{idea['id']:2}. {idea['title']}")
+
+    JsonStream.emit({"ideas": ideas})
+
+def research_prompt(topic: str, type: str = "general"):
+    """Generate research prompts for AI assistants"""
+    prompts = {
+        "general": f"""I'm creating a YouTube video about {topic}.
+
+Please help me research:
+1. Key concepts and terminology
+2. Common problems/pain points
+3. Best practices and solutions
+4. Interesting statistics or facts
+5. Potential controversies or debates
+
+Format as bullet points for easy reference.""",
+
+        "script": f"""Write a YouTube video script about {topic}.
+
+Requirements:
+- 8-10 minute video (1200-1500 words)
+- Engaging hook in first 15 seconds
+- Clear sections with timestamps
+- Include calls for b-roll/visuals
+- End with call to action
+
+Tone: Informative but conversational""",
+
+        "thumbnail": f"""I need YouTube thumbnail ideas for a video about {topic}.
+
+Generate 5 thumbnail concepts with:
+1. Main text (max 3-4 words)
+2. Visual elements description
+3. Color scheme
+4. Emotion/expression if person is included
+5. Why it would get clicks""",
+
+        "comparison": f"""Create a comparison table for {topic}.
+
+Include:
+- Key features to compare
+- Pros and cons of each option
+- Pricing information
+- Best use cases
+- Final recommendations
+
+Format as a structured comparison suitable for video presentation."""
+    }
+
+    prompt = prompts.get(type, prompts["general"])
+
+    # Save prompt for copying
+    prompt_file = Path.home() / ".cache" / "studioflow" / "ai_prompts.txt"
+    prompt_file.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(prompt_file, 'a') as f:
+        f.write(f"\n{'='*60}\n")
+        f.write(f"Date: {datetime.now().isoformat()}\n")
+        f.write(f"Type: {type}\n")
+        f.write(f"Topic: {topic}\n")
+        f.write(f"{'='*60}\n")
+        f.write(prompt)
+        f.write("\n\n")
+
+    print("📝 AI Prompt Generated:")
+    print("-" * 60)
+    print(prompt)
+    print("-" * 60)
+    print(f"\n✅ Saved to: {prompt_file}")
+    print("📋 Copy and paste into Claude, ChatGPT, or Gemini")
+
+    JsonStream.emit({"prompt": prompt, "type": type, "topic": topic})
+
+def content_calendar(weeks: int = 4):
+    """Generate content calendar template"""
+    calendar = {
+        "start_date": datetime.now().isoformat(),
+        "weeks": []
+    }
+
+    video_types = ["Tutorial", "Review", "Comparison", "News", "Tips", "Project"]
+
+    for week in range(weeks):
+        week_data = {
+            "week": week + 1,
+            "videos": []
+        }
+
+        for day in ["Monday", "Thursday", "Saturday"]:  # 3 videos per week
+            video_type = video_types[len(week_data["videos"]) % len(video_types)]
+            week_data["videos"].append({
+                "day": day,
+                "type": video_type,
+                "title": f"[{video_type} Title]",
+                "status": "planned",
+                "script": "pending",
+                "filmed": False,
+                "edited": False,
+                "published": False
+            })
+
+        calendar["weeks"].append(week_data)
+
+    # Save calendar
+    calendar_file = Path.home() / ".cache" / "studioflow" / "content_calendar.json"
+    calendar_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(calendar_file, 'w') as f:
+        json.dump(calendar, f, indent=2)
+
+    print("📅 Content Calendar")
+    print("=" * 60)
+    for week_data in calendar["weeks"]:
+        print(f"\nWeek {week_data['week']}:")
+        for video in week_data["videos"]:
+            print(f"  {video['day']:10} - {video['type']:12} - {video['title']}")
+
+    JsonStream.emit(calendar)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="sf-ai - AI assistant integration",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  sf-ai script "My Project" --style educational
+  sf-ai ideas "Python tutorials" --count 10
+  sf-ai prompt "Linux commands" --type script
+  sf-ai calendar --weeks 4
+
+Script Styles:
+  educational  - Teaching/tutorial format
+  entertainment - Story-driven content
+  review       - Product/service review
+
+Prompt Types:
+  general     - Research assistance
+  script      - Full script writing
+  thumbnail   - Thumbnail ideas
+  comparison  - Comparison tables
+        """
+    )
+
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # Script command
+    script_parser = subparsers.add_parser("script", help="Generate script template")
+    script_parser.add_argument("project", help="Project name")
+    script_parser.add_argument("-s", "--style", default="educational",
+                              choices=["educational", "entertainment", "review"],
+                              help="Script style")
+
+    # Ideas command
+    ideas_parser = subparsers.add_parser("ideas", help="Generate video ideas")
+    ideas_parser.add_argument("topic", help="Topic for ideas")
+    ideas_parser.add_argument("-c", "--count", type=int, default=10,
+                             help="Number of ideas")
+
+    # Prompt command
+    prompt_parser = subparsers.add_parser("prompt", help="AI research prompt")
+    prompt_parser.add_argument("topic", help="Research topic")
+    prompt_parser.add_argument("-t", "--type", default="general",
+                              choices=["general", "script", "thumbnail", "comparison"],
+                              help="Prompt type")
+
+    # Calendar command
+    calendar_parser = subparsers.add_parser("calendar", help="Content calendar")
+    calendar_parser.add_argument("-w", "--weeks", type=int, default=4,
+                                help="Number of weeks")
+
+    args = parser.parse_args()
+
+    if args.command == "script":
+        generate_script(args.project, args.style)
+    elif args.command == "ideas":
+        generate_ideas(args.topic, args.count)
+    elif args.command == "prompt":
+        research_prompt(args.topic, args.type)
+    elif args.command == "calendar":
+        content_calendar(args.weeks)
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()

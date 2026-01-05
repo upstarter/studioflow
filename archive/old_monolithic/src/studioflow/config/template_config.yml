@@ -1,0 +1,170 @@
+# StudioFlow Template Configuration
+# Users can customize templates to match their workflow
+
+# YouTube Template Customization
+youtube:
+  # Choose complexity level
+  complexity: standard  # minimal, standard, advanced, custom
+  
+  # Platform targets (which export folders to create)
+  platforms:
+    youtube: true
+    shorts: true
+    instagram: false
+    tiktok: false
+    twitter: false
+    podcast: false
+  
+  # Workflow features to include
+  features:
+    planning: true      # Research, scripts, shot lists
+    sponsors: false     # Sponsor integration folders
+    color: false        # Color grading folders
+    analytics: true     # Performance tracking
+    multiversion: false # Different edits (sponsor/no sponsor)
+  
+  # Directory naming preferences
+  naming:
+    style: descriptive  # descriptive, numbered, minimal
+    # Map standard names to your preferred names
+    custom_names:
+      footage: "raw_footage"
+      exports: "renders"
+      graphics: "gfx"
+      audio: "sound"
+  
+  # File generation preferences
+  files:
+    metadata: true       # YouTube metadata file
+    checklist: true      # Pre-upload checklist
+    templates: true      # Description templates
+    sponsor_guide: false # Sponsor integration guide
+  
+  # Export presets based on your needs
+  export_presets:
+    - name: youtube_main
+      resolution: "1920x1080"  # Your standard resolution
+      fps: 30
+      bitrate: "12M"
+    
+    - name: youtube_4k
+      resolution: "3840x2160"
+      fps: 30
+      bitrate: "45M"
+      enabled: false  # Set true if you upload 4K
+    
+    - name: shorts
+      resolution: "1080x1920"
+      fps: 30
+      bitrate: "15M"
+      max_duration: 60
+  
+  # Automatic folder creation rules
+  auto_create:
+    # Create dated folders for certain directories
+    dated_folders:
+      - footage  # Creates: footage/2024-08-20/
+      - exports  # Creates: exports/2024-08-20/
+    
+    # Create numbered versions
+    versioning:
+      enabled: true
+      pattern: "v{number}"  # v1, v2, v3
+      directories:
+        - exports/youtube
+        - graphics/thumbnails
+  
+  # Smart organization features
+  smart_features:
+    # Auto-detect and organize footage types
+    auto_organize:
+      enabled: true
+      rules:
+        - pattern: "screen_*"
+          destination: "footage/screen-capture"
+        - pattern: "DJI_*"
+          destination: "footage/drone"
+        - pattern: "IMG_*"
+          destination: "footage/phone"
+    
+    # Link to common asset libraries
+    shared_assets:
+      music_library: "~/.studioflow/assets/music"
+      sfx_library: "~/.studioflow/assets/sfx"
+      graphics_library: "~/.studioflow/assets/graphics"
+      link_type: "symlink"  # symlink or copy
+
+# Workflow Templates
+# Define different YouTube content types
+workflows:
+  talking_head:
+    directories:
+      - footage/a-roll
+      - footage/b-roll
+      - footage/screen-capture
+      - graphics/lower-thirds
+      - graphics/thumbnails
+    description: "Single camera with screen share"
+  
+  vlog:
+    directories:
+      - footage/main
+      - footage/b-roll
+      - footage/phone
+      - footage/drone
+      - audio/music
+      - graphics/titles
+    description: "Multi-location vlog style"
+  
+  tutorial:
+    directories:
+      - footage/face-cam
+      - footage/screen-capture
+      - footage/close-ups
+      - graphics/annotations
+      - graphics/callouts
+      - exports/chapters
+    description: "Educational content"
+  
+  review:
+    directories:
+      - footage/product
+      - footage/unboxing
+      - footage/testing
+      - footage/comparisons
+      - graphics/specs
+      - graphics/charts
+    description: "Product reviews"
+  
+  podcast:
+    directories:
+      - footage/multi-cam
+      - audio/raw
+      - audio/processed
+      - exports/full
+      - exports/clips
+      - exports/audio-only
+    description: "Podcast recording"
+
+# Quick Templates
+# Minimal setups for quick projects
+quick:
+  basic:
+    directories:
+      - footage
+      - exports
+    description: "Bare minimum"
+  
+  shorts_only:
+    directories:
+      - footage/vertical
+      - exports/shorts
+      - graphics/thumbnails
+    description: "YouTube Shorts only"
+  
+  stream_highlights:
+    directories:
+      - footage/stream-clips
+      - exports/highlights
+      - graphics/thumbnails
+    description: "Stream highlight videos"

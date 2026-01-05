@@ -1,0 +1,185 @@
+# StudioFlow Video Context Template
+# Copy this to .studioflow/video_context.yaml in your project
+
+video:
+  title: "Python Functions Tutorial"  # Main title
+  topic: "Teaching functions in Python"  # What you're covering
+
+  # Critical for hook generation - be specific!
+  audience:
+    level: "beginner"  # beginner, intermediate, advanced
+    age: "18-34"  # target age range
+    problem: "writing repetitive code"  # main pain point
+    desire: "write clean, professional code"  # what they want
+    current_belief: "functions are complicated"  # misconception to address
+
+  # The transformation your video provides
+  transformation:
+    from: "copy-pasting code everywhere"  # current state
+    to: "using functions like a pro"  # desired state
+    time: "10 minutes"  # how long it takes
+    difficulty: "easy"  # easy, moderate, challenging
+
+  # Competition research (check YouTube)
+  competition:
+    similar_videos:
+      - title: "Functions in Python - Tech With Tim"
+        url: "youtube.com/watch?v=..."
+        views: "500K"
+        ctr: "6.2%"  # if known
+        retention: "42%"  # if known
+        hook: "Functions are the building blocks..."
+        weakness: "Too slow, too academic"
+
+      - title: "Python Functions Explained - Programming with Mosh"
+        url: "youtube.com/watch?v=..."
+        views: "1.2M"
+        hook: "In this tutorial, you'll learn..."
+        weakness: "Generic hook, no emotion"
+
+  # Your unique angle
+  unique_value:
+    approach: "Learn by fixing broken code"  # what's different
+    style: "Fast-paced with humor"  # your style
+    proof: "Live coding demonstration"  # how you prove it works
+    bonus: "Cheat sheet PDF"  # extra value
+
+  # Video specifications
+  specs:
+    duration: "10 minutes"
+    style: "fast-paced tutorial"  # tutorial, vlog, review, etc.
+    energy: "high"  # low, medium, high
+    format: "screen share + face cam"
+    platforms:
+      - youtube  # long form
+      - youtube_shorts  # extract shorts
+      - instagram_reels  # repurpose
+
+# Hook generation preferences
+hooks:
+  count: 5  # how many to generate
+  max_duration: 15  # seconds
+
+  # Preferred hook types for your content
+  preferred:
+    - "problem_agitation"  # "You know that feeling..."
+    - "shocking_statistic"  # "87% of developers..."
+    - "mistake_callout"  # "Stop doing this..."
+
+  avoid:
+    - "story"  # Takes too long
+    - "controversy"  # Not your brand
+
+  # Keywords to include
+  must_include:
+    - "python"
+    - "functions"
+    - "easy"
+
+  # Emotions to evoke
+  emotions:
+    - "curiosity"  # They want to know more
+    - "relief"  # Finally, a solution
+    - "excitement"  # This is easier than thought
+
+# Thumbnail requirements
+thumbnail:
+  style: "high_contrast"  # high_contrast, minimal, data_driven
+
+  # Expressions you'll capture
+  emotions_needed:
+    - emotion: "surprised"
+      prompt: "Python is THIS easy?!"
+      intensity: "high"
+
+    - emotion: "confused"
+      prompt: "Why doesn't this work?"
+      intensity: "medium"
+
+    - emotion: "excited"
+      prompt: "Finally understand!"
+      intensity: "high"
+
+    - emotion: "mind_blown"
+      prompt: "Never knew this trick!"
+      intensity: "maximum"
+
+  # Text overlay options
+  text_options:
+    - main: "FUNCTIONS"
+      sub: "in 3 minutes"
+      color: "yellow"
+
+    - main: "STOP"
+      sub: "copy-pasting code"
+      color: "red"
+
+    - main: "87% GET THIS WRONG"
+      sub: ""
+      color: "white"
+
+    - main: "THE PYTHON TRICK"
+      sub: "nobody teaches"
+      color: "cyan"
+
+  # Visual elements
+  composition:
+    face_position: "left_third"
+    text_position: "right_two_thirds"
+    background: "blurred_code"
+    props:
+      - "pointing_arrow"
+      - "circle_highlight"
+      - "python_logo"
+
+# Testing strategy
+testing:
+  method: "unlisted_youtube"  # unlisted_youtube, youtube_ads, community
+  budget: 10  # dollars for ads
+  duration: 48  # hours to test
+
+  # Where to share for feedback
+  communities:
+    - "r/learnpython"
+    - "Python Discord"
+    - "Dev Twitter"
+
+  # Success metrics
+  success_criteria:
+    min_retention_15s: 75  # %
+    min_ctr: 8  # %
+    min_avg_duration: 3.0  # minutes
+
+# Series information (if applicable)
+series:
+  name: "Python Basics"
+  episode: 3
+  total_episodes: 10
+
+  # Previous episodes for continuity
+  previous:
+    - title: "Variables in Python"
+      performance: "good"  # poor, average, good, excellent
+      best_hook: "shocking_statistic"
+
+    - title: "Python Lists Explained"
+      performance: "excellent"
+      best_hook: "problem_agitation"
+
+# Notes for yourself
+notes:
+  inspiration: "Saw common question on Reddit"
+  goal: "Make functions finally click for beginners"
+  success_metric: "50K views in first week"
+
+  # Ideas for this video
+  ideas:
+    - "Use cooking analogy for functions"
+    - "Show real-world example from my code"
+    - "Include common mistakes section"
+
+  # Remind yourself
+  remember:
+    - "Keep energy high throughout"
+    - "Don't assume prior knowledge"
+    - "Include progress checkpoints"

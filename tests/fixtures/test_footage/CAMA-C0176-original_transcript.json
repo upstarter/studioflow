@@ -1,0 +1,1711 @@
+{
+  "text": "Slate naming introduction done. This is an introduction to our comprehensive test. We are testing multiple market types and scenarios in a single clip. Slate naming topic one order one done. This is topic one. It's the first subject we're discussing. This content is important for testing. Slate mark done. This is a standalone market test. It creates a jump cut point. Slate naming topic two order to done. This is topic two. It's the second subject. We're testing sequential markers here. Slate naming step one step one done. This is step one of our tutorial. First we need to understand the basics. Slate effect zoom done. This is marker has an effect command. It should be detected and applied. Slate ending conclusion done. This is our conclusion. We've tested multiple market types, including start and standalone markers.",
+  "language": "en",
+  "duration": 97.6,
+  "words": [
+    {
+      "word": "Slate",
+      "start": 6.560000000000003,
+      "end": 7.36
+    },
+    {
+      "word": "naming",
+      "start": 7.36,
+      "end": 7.94
+    },
+    {
+      "word": "introduction",
+      "start": 7.94,
+      "end": 8.78
+    },
+    {
+      "word": "done.",
+      "start": 8.78,
+      "end": 9.6
+    },
+    {
+      "word": "This",
+      "start": 10.820000000000002,
+      "end": 11.62
+    },
+    {
+      "word": "is",
+      "start": 11.62,
+      "end": 12.0
+    },
+    {
+      "word": "an",
+      "start": 12.0,
+      "end": 12.32
+    },
+    {
+      "word": "introduction",
+      "start": 12.32,
+      "end": 12.72
+    },
+    {
+      "word": "to",
+      "start": 12.72,
+      "end": 13.06
+    },
+    {
+      "word": "our",
+      "start": 13.06,
+      "end": 13.18
+    },
+    {
+      "word": "comprehensive",
+      "start": 13.18,
+      "end": 13.6
+    },
+    {
+      "word": "test.",
+      "start": 13.6,
+      "end": 14.12
+    },
+    {
+      "word": "We",
+      "start": 14.34,
+      "end": 14.4
+    },
+    {
+      "word": "are",
+      "start": 14.4,
+      "end": 14.48
+    },
+    {
+      "word": "testing",
+      "start": 14.48,
+      "end": 14.76
+    },
+    {
+      "word": "multiple",
+      "start": 14.76,
+      "end": 15.12
+    },
+    {
+      "word": "market",
+      "start": 15.12,
+      "end": 15.5
+    },
+    {
+      "word": "types",
+      "start": 15.5,
+      "end": 15.88
+    },
+    {
+      "word": "and",
+      "start": 15.88,
+      "end": 16.04
+    },
+    {
+      "word": "scenarios",
+      "start": 16.04,
+      "end": 16.42
+    },
+    {
+      "word": "in",
+      "start": 16.42,
+      "end": 16.64
+    },
+    {
+      "word": "a",
+      "start": 16.64,
+      "end": 16.74
+    },
+    {
+      "word": "single",
+      "start": 16.74,
+      "end": 16.96
+    },
+    {
+      "word": "clip.",
+      "start": 16.96,
+      "end": 17.3
+    },
+    {
+      "word": "Slate",
+      "start": 21.220000000000002,
+      "end": 21.62
+    },
+    {
+      "word": "naming",
+      "start": 21.62,
+      "end": 22.02
+    },
+    {
+      "word": "topic",
+      "start": 22.02,
+      "end": 22.54
+    },
+    {
+      "word": "one",
+      "start": 22.54,
+      "end": 23.18
+    },
+    {
+      "word": "order",
+      "start": 23.18,
+      "end": 24.26
+    },
+    {
+      "word": "one",
+      "start": 24.26,
+      "end": 25.06
+    },
+    {
+      "word": "done.",
+      "start": 25.06,
+      "end": 25.92
+    },
+    {
+      "word": "This",
+      "start": 27.319999999999997,
+      "end": 28.24
+    },
+    {
+      "word": "is",
+      "start": 28.24,
+      "end": 28.46
+    },
+    {
+      "word": "topic",
+      "start": 28.46,
+      "end": 28.88
+    },
+    {
+      "word": "one.",
+      "start": 28.88,
+      "end": 29.4
+    },
+    {
+      "word": "It's",
+      "start": 29.9,
+      "end": 30.08
+    },
+    {
+      "word": "the",
+      "start": 30.08,
+      "end": 30.18
+    },
+    {
+      "word": "first",
+      "start": 30.18,
+      "end": 30.38
+    },
+    {
+      "word": "subject",
+      "start": 30.38,
+      "end": 30.76
+    },
+    {
+      "word": "we're",
+      "start": 30.76,
+      "end": 31.0
+    },
+    {
+      "word": "discussing.",
+      "start": 31.0,
+      "end": 31.5
+    },
+    {
+      "word": "This",
+      "start": 31.86,
+      "end": 31.98
+    },
+    {
+      "word": "content",
+      "start": 31.98,
+      "end": 32.38
+    },
+    {
+      "word": "is",
+      "start": 32.38,
+      "end": 32.9
+    },
+    {
+      "word": "important",
+      "start": 32.9,
+      "end": 33.34
+    },
+    {
+      "word": "for",
+      "start": 33.34,
+      "end": 33.66
+    },
+    {
+      "word": "testing.",
+      "start": 33.66,
+      "end": 34.08
+    },
+    {
+      "word": "Slate",
+      "start": 36.22,
+      "end": 36.68
+    },
+    {
+      "word": "mark",
+      "start": 36.68,
+      "end": 37.22
+    },
+    {
+      "word": "done.",
+      "start": 37.22,
+      "end": 37.9
+    },
+    {
+      "word": "This",
+      "start": 39.92,
+      "end": 40.38
+    },
+    {
+      "word": "is",
+      "start": 40.38,
+      "end": 40.64
+    },
+    {
+      "word": "a",
+      "start": 40.64,
+      "end": 40.78
+    },
+    {
+      "word": "standalone",
+      "start": 40.78,
+      "end": 41.18
+    },
+    {
+      "word": "market",
+      "start": 41.18,
+      "end": 41.66
+    },
+    {
+      "word": "test.",
+      "start": 41.66,
+      "end": 42.18
+    },
+    {
+      "word": "It",
+      "start": 42.34,
+      "end": 42.44
+    },
+    {
+      "word": "creates",
+      "start": 42.44,
+      "end": 42.78
+    },
+    {
+      "word": "a",
+      "start": 42.78,
+      "end": 43.16
+    },
+    {
+      "word": "jump",
+      "start": 43.16,
+      "end": 43.4
+    },
+    {
+      "word": "cut",
+      "start": 43.4,
+      "end": 43.7
+    },
+    {
+      "word": "point.",
+      "start": 43.7,
+      "end": 44.26
+    },
+    {
+      "word": "Slate",
+      "start": 47.16,
+      "end": 47.62
+    },
+    {
+      "word": "naming",
+      "start": 47.62,
+      "end": 48.26
+    },
+    {
+      "word": "topic",
+      "start": 48.26,
+      "end": 48.8
+    },
+    {
+      "word": "two",
+      "start": 48.8,
+      "end": 49.38
+    },
+    {
+      "word": "order",
+      "start": 49.38,
+      "end": 50.0
+    },
+    {
+      "word": "to",
+      "start": 50.0,
+      "end": 50.6
+    },
+    {
+      "word": "done.",
+      "start": 50.6,
+      "end": 51.3
+    },
+    {
+      "word": "This",
+      "start": 52.4,
+      "end": 53.32
+    },
+    {
+      "word": "is",
+      "start": 53.32,
+      "end": 53.62
+    },
+    {
+      "word": "topic",
+      "start": 53.62,
+      "end": 54.06
+    },
+    {
+      "word": "two.",
+      "start": 54.06,
+      "end": 54.68
+    },
+    {
+      "word": "It's",
+      "start": 54.68,
+      "end": 55.34
+    },
+    {
+      "word": "the",
+      "start": 55.34,
+      "end": 55.48
+    },
+    {
+      "word": "second",
+      "start": 55.48,
+      "end": 55.74
+    },
+    {
+      "word": "subject.",
+      "start": 55.74,
+      "end": 56.3
+    },
+    {
+      "word": "We're",
+      "start": 56.6,
+      "end": 56.64
+    },
+    {
+      "word": "testing",
+      "start": 56.64,
+      "end": 56.98
+    },
+    {
+      "word": "sequential",
+      "start": 56.98,
+      "end": 57.6
+    },
+    {
+      "word": "markers",
+      "start": 57.6,
+      "end": 58.02
+    },
+    {
+      "word": "here.",
+      "start": 58.02,
+      "end": 58.88
+    },
+    {
+      "word": "Slate",
+      "start": 61.04,
+      "end": 61.56
+    },
+    {
+      "word": "naming",
+      "start": 61.56,
+      "end": 62.2
+    },
+    {
+      "word": "step",
+      "start": 62.2,
+      "end": 62.68
+    },
+    {
+      "word": "one",
+      "start": 62.68,
+      "end": 63.24
+    },
+    {
+      "word": "step",
+      "start": 63.24,
+      "end": 63.92
+    },
+    {
+      "word": "one",
+      "start": 63.92,
+      "end": 64.56
+    },
+    {
+      "word": "done.",
+      "start": 64.56,
+      "end": 65.28
+    },
+    {
+      "word": "This",
+      "start": 66.68,
+      "end": 67.2
+    },
+    {
+      "word": "is",
+      "start": 67.2,
+      "end": 67.6
+    },
+    {
+      "word": "step",
+      "start": 67.6,
+      "end": 68.02
+    },
+    {
+      "word": "one",
+      "start": 68.02,
+      "end": 68.36
+    },
+    {
+      "word": "of",
+      "start": 68.36,
+      "end": 68.68
+    },
+    {
+      "word": "our",
+      "start": 68.68,
+      "end": 68.8
+    },
+    {
+      "word": "tutorial.",
+      "start": 68.8,
+      "end": 69.34
+    },
+    {
+      "word": "First",
+      "start": 69.66,
+      "end": 69.82
+    },
+    {
+      "word": "we",
+      "start": 69.82,
+      "end": 70.08
+    },
+    {
+      "word": "need",
+      "start": 70.08,
+      "end": 70.26
+    },
+    {
+      "word": "to",
+      "start": 70.26,
+      "end": 70.44
+    },
+    {
+      "word": "understand",
+      "start": 70.44,
+      "end": 70.94
+    },
+    {
+      "word": "the",
+      "start": 70.94,
+      "end": 71.24
+    },
+    {
+      "word": "basics.",
+      "start": 71.24,
+      "end": 71.74
+    },
+    {
+      "word": "Slate",
+      "start": 73.86,
+      "end": 74.68
+    },
+    {
+      "word": "effect",
+      "start": 74.68,
+      "end": 75.32
+    },
+    {
+      "word": "zoom",
+      "start": 75.32,
+      "end": 76.06
+    },
+    {
+      "word": "done.",
+      "start": 76.06,
+      "end": 76.88
+    },
+    {
+      "word": "This",
+      "start": 78.10000000000001,
+      "end": 78.62
+    },
+    {
+      "word": "is",
+      "start": 78.62,
+      "end": 79.0
+    },
+    {
+      "word": "marker",
+      "start": 79.0,
+      "end": 79.6
+    },
+    {
+      "word": "has",
+      "start": 79.6,
+      "end": 80.62
+    },
+    {
+      "word": "an",
+      "start": 80.62,
+      "end": 80.86
+    },
+    {
+      "word": "effect",
+      "start": 80.86,
+      "end": 81.14
+    },
+    {
+      "word": "command.",
+      "start": 81.14,
+      "end": 81.84
+    },
+    {
+      "word": "It",
+      "start": 81.84,
+      "end": 82.4
+    },
+    {
+      "word": "should",
+      "start": 82.4,
+      "end": 82.62
+    },
+    {
+      "word": "be",
+      "start": 82.62,
+      "end": 82.84
+    },
+    {
+      "word": "detected",
+      "start": 82.84,
+      "end": 83.26
+    },
+    {
+      "word": "and",
+      "start": 83.26,
+      "end": 83.54
+    },
+    {
+      "word": "applied.",
+      "start": 83.54,
+      "end": 83.92
+    },
+    {
+      "word": "Slate",
+      "start": 85.62,
+      "end": 86.54
+    },
+    {
+      "word": "ending",
+      "start": 86.54,
+      "end": 87.38
+    },
+    {
+      "word": "conclusion",
+      "start": 87.38,
+      "end": 88.28
+    },
+    {
+      "word": "done.",
+      "start": 88.28,
+      "end": 89.24
+    },
+    {
+      "word": "This",
+      "start": 91.12,
+      "end": 91.58
+    },
+    {
+      "word": "is",
+      "start": 91.58,
+      "end": 91.72
+    },
+    {
+      "word": "our",
+      "start": 91.72,
+      "end": 91.94
+    },
+    {
+      "word": "conclusion.",
+      "start": 91.94,
+      "end": 92.44
+    },
+    {
+      "word": "We've",
+      "start": 92.76,
+      "end": 92.98
+    },
+    {
+      "word": "tested",
+      "start": 92.98,
+      "end": 93.28
+    },
+    {
+      "word": "multiple",
+      "start": 93.28,
+      "end": 93.9
+    },
+    {
+      "word": "market",
+      "start": 93.9,
+      "end": 94.32
+    },
+    {
+      "word": "types,",
+      "start": 94.32,
+      "end": 94.62
+    },
+    {
+      "word": "including",
+      "start": 94.62,
+      "end": 95.02
+    },
+    {
+      "word": "start",
+      "start": 95.02,
+      "end": 95.32
+    },
+    {
+      "word": "and",
+      "start": 95.32,
+      "end": 95.82
+    },
+    {
+      "word": "standalone",
+      "start": 95.82,
+      "end": 96.92
+    },
+    {
+      "word": "markers.",
+      "start": 96.92,
+      "end": 97.6
+    }
+  ],
+  "segments": [
+    {
+      "id": 0,
+      "start": 6.560000000000003,
+      "end": 9.6,
+      "text": "Slate naming introduction done.",
+      "words": [
+        {
+          "word": " Slate",
+          "start": 6.560000000000003,
+          "end": 7.36,
+          "probability": 0.587359644472599
+        },
+        {
+          "word": " naming",
+          "start": 7.36,
+          "end": 7.94,
+          "probability": 0.7460981011390686
+        },
+        {
+          "word": " introduction",
+          "start": 7.94,
+          "end": 8.78,
+          "probability": 0.8207836747169495
+        },
+        {
+          "word": " done.",
+          "start": 8.78,
+          "end": 9.6,
+          "probability": 0.893673837184906
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "start": 10.820000000000002,
+      "end": 14.12,
+      "text": "This is an introduction to our comprehensive test.",
+      "words": [
+        {
+          "word": " This",
+          "start": 10.820000000000002,
+          "end": 11.62,
+          "probability": 0.8778259754180908
+        },
+        {
+          "word": " is",
+          "start": 11.62,
+          "end": 12.0,
+          "probability": 0.9905639886856079
+        },
+        {
+          "word": " an",
+          "start": 12.0,
+          "end": 12.32,
+          "probability": 0.9890700578689575
+        },
+        {
+          "word": " introduction",
+          "start": 12.32,
+          "end": 12.72,
+          "probability": 0.9953049421310425
+        },
+        {
+          "word": " to",
+          "start": 12.72,
+          "end": 13.06,
+          "probability": 0.9951421022415161
+        },
+        {
+          "word": " our",
+          "start": 13.06,
+          "end": 13.18,
+          "probability": 0.9906858801841736
+        },
+        {
+          "word": " comprehensive",
+          "start": 13.18,
+          "end": 13.6,
+          "probability": 0.4879366457462311
+        },
+        {
+          "word": " test.",
+          "start": 13.6,
+          "end": 14.12,
+          "probability": 0.8379232287406921
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "start": 14.34,
+      "end": 17.3,
+      "text": "We are testing multiple market types and scenarios in a single clip.",
+      "words": [
+        {
+          "word": " We",
+          "start": 14.34,
+          "end": 14.4,
+          "probability": 0.9864317774772644
+        },
+        {
+          "word": " are",
+          "start": 14.4,
+          "end": 14.48,
+          "probability": 0.41052645444869995
+        },
+        {
+          "word": " testing",
+          "start": 14.48,
+          "end": 14.76,
+          "probability": 0.9929295182228088
+        },
+        {
+          "word": " multiple",
+          "start": 14.76,
+          "end": 15.12,
+          "probability": 0.9983571171760559
+        },
+        {
+          "word": " market",
+          "start": 15.12,
+          "end": 15.5,
+          "probability": 0.350049763917923
+        },
+        {
+          "word": " types",
+          "start": 15.5,
+          "end": 15.88,
+          "probability": 0.9762591123580933
+        },
+        {
+          "word": " and",
+          "start": 15.88,
+          "end": 16.04,
+          "probability": 0.9119794964790344
+        },
+        {
+          "word": " scenarios",
+          "start": 16.04,
+          "end": 16.42,
+          "probability": 0.9977307915687561
+        },
+        {
+          "word": " in",
+          "start": 16.42,
+          "end": 16.64,
+          "probability": 0.967957615852356
+        },
+        {
+          "word": " a",
+          "start": 16.64,
+          "end": 16.74,
+          "probability": 0.9970369338989258
+        },
+        {
+          "word": " single",
+          "start": 16.74,
+          "end": 16.96,
+          "probability": 0.9896228313446045
+        },
+        {
+          "word": " clip.",
+          "start": 16.96,
+          "end": 17.3,
+          "probability": 0.9428206086158752
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "start": 21.6,
+      "end": 25.92,
+      "text": "Slate naming topic one order one done.",
+      "words": [
+        {
+          "word": " Slate",
+          "start": 21.220000000000002,
+          "end": 21.62,
+          "probability": 0.9879347681999207
+        },
+        {
+          "word": " naming",
+          "start": 21.62,
+          "end": 22.02,
+          "probability": 0.996193528175354
+        },
+        {
+          "word": " topic",
+          "start": 22.02,
+          "end": 22.54,
+          "probability": 0.8330813646316528
+        },
+        {
+          "word": " one",
+          "start": 22.54,
+          "end": 23.18,
+          "probability": 0.5500970482826233
+        },
+        {
+          "word": " order",
+          "start": 23.18,
+          "end": 24.26,
+          "probability": 0.5206226110458374
+        },
+        {
+          "word": " one",
+          "start": 24.26,
+          "end": 25.06,
+          "probability": 0.8072841167449951
+        },
+        {
+          "word": " done.",
+          "start": 25.06,
+          "end": 25.92,
+          "probability": 0.9328890442848206
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "start": 27.319999999999997,
+      "end": 29.4,
+      "text": "This is topic one.",
+      "words": [
+        {
+          "word": " This",
+          "start": 27.319999999999997,
+          "end": 28.24,
+          "probability": 0.22161979973316193
+        },
+        {
+          "word": " is",
+          "start": 28.24,
+          "end": 28.46,
+          "probability": 0.9146597385406494
+        },
+        {
+          "word": " topic",
+          "start": 28.46,
+          "end": 28.88,
+          "probability": 0.7468405961990356
+        },
+        {
+          "word": " one.",
+          "start": 28.88,
+          "end": 29.4,
+          "probability": 0.36021366715431213
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "start": 29.9,
+      "end": 31.5,
+      "text": "It's the first subject we're discussing.",
+      "words": [
+        {
+          "word": " It's",
+          "start": 29.9,
+          "end": 30.08,
+          "probability": 0.8143465518951416
+        },
+        {
+          "word": " the",
+          "start": 30.08,
+          "end": 30.18,
+          "probability": 0.9868871569633484
+        },
+        {
+          "word": " first",
+          "start": 30.18,
+          "end": 30.38,
+          "probability": 0.9855651259422302
+        },
+        {
+          "word": " subject",
+          "start": 30.38,
+          "end": 30.76,
+          "probability": 0.9929250478744507
+        },
+        {
+          "word": " we're",
+          "start": 30.76,
+          "end": 31.0,
+          "probability": 0.9453471601009369
+        },
+        {
+          "word": " discussing.",
+          "start": 31.0,
+          "end": 31.5,
+          "probability": 0.9958916902542114
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "start": 31.86,
+      "end": 34.08,
+      "text": "This content is important for testing.",
+      "words": [
+        {
+          "word": " This",
+          "start": 31.86,
+          "end": 31.98,
+          "probability": 0.9475980401039124
+        },
+        {
+          "word": " content",
+          "start": 31.98,
+          "end": 32.38,
+          "probability": 0.877163827419281
+        },
+        {
+          "word": " is",
+          "start": 32.38,
+          "end": 32.9,
+          "probability": 0.982958972454071
+        },
+        {
+          "word": " important",
+          "start": 32.9,
+          "end": 33.34,
+          "probability": 0.991503894329071
+        },
+        {
+          "word": " for",
+          "start": 33.34,
+          "end": 33.66,
+          "probability": 0.9933544397354126
+        },
+        {
+          "word": " testing.",
+          "start": 33.66,
+          "end": 34.08,
+          "probability": 0.9956806898117065
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "start": 36.32,
+      "end": 37.9,
+      "text": "Slate mark done.",
+      "words": [
+        {
+          "word": " Slate",
+          "start": 36.22,
+          "end": 36.68,
+          "probability": 0.6389055699110031
+        },
+        {
+          "word": " mark",
+          "start": 36.68,
+          "end": 37.22,
+          "probability": 0.43464043736457825
+        },
+        {
+          "word": " done.",
+          "start": 37.22,
+          "end": 37.9,
+          "probability": 0.7662803530693054
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "start": 40.32,
+      "end": 42.18,
+      "text": "This is a standalone market test.",
+      "words": [
+        {
+          "word": " This",
+          "start": 39.92,
+          "end": 40.38,
+          "probability": 0.963470458984375
+        },
+        {
+          "word": " is",
+          "start": 40.38,
+          "end": 40.64,
+          "probability": 0.9961483478546143
+        },
+        {
+          "word": " a",
+          "start": 40.64,
+          "end": 40.78,
+          "probability": 0.9745502471923828
+        },
+        {
+          "word": " standalone",
+          "start": 40.78,
+          "end": 41.18,
+          "probability": 0.8991989493370056
+        },
+        {
+          "word": " market",
+          "start": 41.18,
+          "end": 41.66,
+          "probability": 0.06229346990585327
+        },
+        {
+          "word": " test.",
+          "start": 41.66,
+          "end": 42.18,
+          "probability": 0.9775359034538269
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "start": 42.34,
+      "end": 44.26,
+      "text": "It creates a jump cut point.",
+      "words": [
+        {
+          "word": " It",
+          "start": 42.34,
+          "end": 42.44,
+          "probability": 0.9889070987701416
+        },
+        {
+          "word": " creates",
+          "start": 42.44,
+          "end": 42.78,
+          "probability": 0.99607914686203
+        },
+        {
+          "word": " a",
+          "start": 42.78,
+          "end": 43.16,
+          "probability": 0.9932430386543274
+        },
+        {
+          "word": " jump",
+          "start": 43.16,
+          "end": 43.4,
+          "probability": 0.9791353344917297
+        },
+        {
+          "word": " cut",
+          "start": 43.4,
+          "end": 43.7,
+          "probability": 0.8160635828971863
+        },
+        {
+          "word": " point.",
+          "start": 43.7,
+          "end": 44.26,
+          "probability": 0.9913963675498962
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "start": 47.32000000000001,
+      "end": 51.3,
+      "text": "Slate naming topic two order to done.",
+      "words": [
+        {
+          "word": " Slate",
+          "start": 47.16,
+          "end": 47.62,
+          "probability": 0.9852689504623413
+        },
+        {
+          "word": " naming",
+          "start": 47.62,
+          "end": 48.26,
+          "probability": 0.7629749178886414
+        },
+        {
+          "word": " topic",
+          "start": 48.26,
+          "end": 48.8,
+          "probability": 0.9492332935333252
+        },
+        {
+          "word": " two",
+          "start": 48.8,
+          "end": 49.38,
+          "probability": 0.5822381377220154
+        },
+        {
+          "word": " order",
+          "start": 49.38,
+          "end": 50.0,
+          "probability": 0.7992492318153381
+        },
+        {
+          "word": " to",
+          "start": 50.0,
+          "end": 50.6,
+          "probability": 0.48475906252861023
+        },
+        {
+          "word": " done.",
+          "start": 50.6,
+          "end": 51.3,
+          "probability": 0.8750656843185425
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "start": 52.4,
+      "end": 54.68,
+      "text": "This is topic two.",
+      "words": [
+        {
+          "word": " This",
+          "start": 52.4,
+          "end": 53.32,
+          "probability": 0.986220121383667
+        },
+        {
+          "word": " is",
+          "start": 53.32,
+          "end": 53.62,
+          "probability": 0.9959698915481567
+        },
+        {
+          "word": " topic",
+          "start": 53.62,
+          "end": 54.06,
+          "probability": 0.9968339800834656
+        },
+        {
+          "word": " two.",
+          "start": 54.06,
+          "end": 54.68,
+          "probability": 0.9375500082969666
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "start": 54.68,
+      "end": 56.3,
+      "text": "It's the second subject.",
+      "words": [
+        {
+          "word": " It's",
+          "start": 54.68,
+          "end": 55.34,
+          "probability": 0.8255072236061096
+        },
+        {
+          "word": " the",
+          "start": 55.34,
+          "end": 55.48,
+          "probability": 0.9955507516860962
+        },
+        {
+          "word": " second",
+          "start": 55.48,
+          "end": 55.74,
+          "probability": 0.9769908785820007
+        },
+        {
+          "word": " subject.",
+          "start": 55.74,
+          "end": 56.3,
+          "probability": 0.9986099004745483
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "start": 56.6,
+      "end": 58.88,
+      "text": "We're testing sequential markers here.",
+      "words": [
+        {
+          "word": " We're",
+          "start": 56.6,
+          "end": 56.64,
+          "probability": 0.9882340729236603
+        },
+        {
+          "word": " testing",
+          "start": 56.64,
+          "end": 56.98,
+          "probability": 0.9942091703414917
+        },
+        {
+          "word": " sequential",
+          "start": 56.98,
+          "end": 57.6,
+          "probability": 0.9736012816429138
+        },
+        {
+          "word": " markers",
+          "start": 57.6,
+          "end": 58.02,
+          "probability": 0.99456787109375
+        },
+        {
+          "word": " here.",
+          "start": 58.02,
+          "end": 58.88,
+          "probability": 0.9862241744995117
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "start": 61.08,
+      "end": 65.28,
+      "text": "Slate naming step one step one done.",
+      "words": [
+        {
+          "word": " Slate",
+          "start": 61.04,
+          "end": 61.56,
+          "probability": 0.9235215187072754
+        },
+        {
+          "word": " naming",
+          "start": 61.56,
+          "end": 62.2,
+          "probability": 0.8478756546974182
+        },
+        {
+          "word": " step",
+          "start": 62.2,
+          "end": 62.68,
+          "probability": 0.8485472798347473
+        },
+        {
+          "word": " one",
+          "start": 62.68,
+          "end": 63.24,
+          "probability": 0.7912784814834595
+        },
+        {
+          "word": " step",
+          "start": 63.24,
+          "end": 63.92,
+          "probability": 0.43344616889953613
+        },
+        {
+          "word": " one",
+          "start": 63.92,
+          "end": 64.56,
+          "probability": 0.962997317314148
+        },
+        {
+          "word": " done.",
+          "start": 64.56,
+          "end": 65.28,
+          "probability": 0.8964428901672363
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "start": 66.88,
+      "end": 69.34,
+      "text": "This is step one of our tutorial.",
+      "words": [
+        {
+          "word": " This",
+          "start": 66.68,
+          "end": 67.2,
+          "probability": 0.9853702783584595
+        },
+        {
+          "word": " is",
+          "start": 67.2,
+          "end": 67.6,
+          "probability": 0.9986104965209961
+        },
+        {
+          "word": " step",
+          "start": 67.6,
+          "end": 68.02,
+          "probability": 0.9755749702453613
+        },
+        {
+          "word": " one",
+          "start": 68.02,
+          "end": 68.36,
+          "probability": 0.9696643352508545
+        },
+        {
+          "word": " of",
+          "start": 68.36,
+          "end": 68.68,
+          "probability": 0.9990406632423401
+        },
+        {
+          "word": " our",
+          "start": 68.68,
+          "end": 68.8,
+          "probability": 0.9992571473121643
+        },
+        {
+          "word": " tutorial.",
+          "start": 68.8,
+          "end": 69.34,
+          "probability": 0.9874825477600098
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "start": 69.66,
+      "end": 71.74,
+      "text": "First we need to understand the basics.",
+      "words": [
+        {
+          "word": " First",
+          "start": 69.66,
+          "end": 69.82,
+          "probability": 0.991701066493988
+        },
+        {
+          "word": " we",
+          "start": 69.82,
+          "end": 70.08,
+          "probability": 0.5943480134010315
+        },
+        {
+          "word": " need",
+          "start": 70.08,
+          "end": 70.26,
+          "probability": 0.9993746876716614
+        },
+        {
+          "word": " to",
+          "start": 70.26,
+          "end": 70.44,
+          "probability": 0.9991936087608337
+        },
+        {
+          "word": " understand",
+          "start": 70.44,
+          "end": 70.94,
+          "probability": 0.9972817897796631
+        },
+        {
+          "word": " the",
+          "start": 70.94,
+          "end": 71.24,
+          "probability": 0.9983752965927124
+        },
+        {
+          "word": " basics.",
+          "start": 71.24,
+          "end": 71.74,
+          "probability": 0.9991957545280457
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "start": 73.86,
+      "end": 76.88,
+      "text": "Slate effect zoom done.",
+      "words": [
+        {
+          "word": " Slate",
+          "start": 73.86,
+          "end": 74.68,
+          "probability": 0.9908064901828766
+        },
+        {
+          "word": " effect",
+          "start": 74.68,
+          "end": 75.32,
+          "probability": 0.7752454876899719
+        },
+        {
+          "word": " zoom",
+          "start": 75.32,
+          "end": 76.06,
+          "probability": 0.8342244029045105
+        },
+        {
+          "word": " done.",
+          "start": 76.06,
+          "end": 76.88,
+          "probability": 0.8268385529518127
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "start": 78.28,
+      "end": 81.84,
+      "text": "This is marker has an effect command.",
+      "words": [
+        {
+          "word": " This",
+          "start": 78.10000000000001,
+          "end": 78.62,
+          "probability": 0.9907717704772949
+        },
+        {
+          "word": " is",
+          "start": 78.62,
+          "end": 79.0,
+          "probability": 0.9918246865272522
+        },
+        {
+          "word": " marker",
+          "start": 79.0,
+          "end": 79.6,
+          "probability": 0.9468374848365784
+        },
+        {
+          "word": " has",
+          "start": 79.6,
+          "end": 80.62,
+          "probability": 0.8513943552970886
+        },
+        {
+          "word": " an",
+          "start": 80.62,
+          "end": 80.86,
+          "probability": 0.9808713793754578
+        },
+        {
+          "word": " effect",
+          "start": 80.86,
+          "end": 81.14,
+          "probability": 0.923343300819397
+        },
+        {
+          "word": " command.",
+          "start": 81.14,
+          "end": 81.84,
+          "probability": 0.9881701469421387
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "start": 81.84,
+      "end": 83.92,
+      "text": "It should be detected and applied.",
+      "words": [
+        {
+          "word": " It",
+          "start": 81.84,
+          "end": 82.4,
+          "probability": 0.18832316994667053
+        },
+        {
+          "word": " should",
+          "start": 82.4,
+          "end": 82.62,
+          "probability": 0.9942559599876404
+        },
+        {
+          "word": " be",
+          "start": 82.62,
+          "end": 82.84,
+          "probability": 0.999032735824585
+        },
+        {
+          "word": " detected",
+          "start": 82.84,
+          "end": 83.26,
+          "probability": 0.9956464171409607
+        },
+        {
+          "word": " and",
+          "start": 83.26,
+          "end": 83.54,
+          "probability": 0.9930075407028198
+        },
+        {
+          "word": " applied.",
+          "start": 83.54,
+          "end": 83.92,
+          "probability": 0.9965206384658813
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "start": 85.62,
+      "end": 89.24,
+      "text": "Slate ending conclusion done.",
+      "words": [
+        {
+          "word": " Slate",
+          "start": 85.62,
+          "end": 86.54,
+          "probability": 0.9344245195388794
+        },
+        {
+          "word": " ending",
+          "start": 86.54,
+          "end": 87.38,
+          "probability": 0.19498896598815918
+        },
+        {
+          "word": " conclusion",
+          "start": 87.38,
+          "end": 88.28,
+          "probability": 0.7956584692001343
+        },
+        {
+          "word": " done.",
+          "start": 88.28,
+          "end": 89.24,
+          "probability": 0.8422943353652954
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "start": 91.44,
+      "end": 92.44,
+      "text": "This is our conclusion.",
+      "words": [
+        {
+          "word": " This",
+          "start": 91.12,
+          "end": 91.58,
+          "probability": 0.9852504134178162
+        },
+        {
+          "word": " is",
+          "start": 91.58,
+          "end": 91.72,
+          "probability": 0.9953911304473877
+        },
+        {
+          "word": " our",
+          "start": 91.72,
+          "end": 91.94,
+          "probability": 0.9962164759635925
+        },
+        {
+          "word": " conclusion.",
+          "start": 91.94,
+          "end": 92.44,
+          "probability": 0.9848435521125793
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "start": 92.76,
+      "end": 97.6,
+      "text": "We've tested multiple market types, including start and standalone markers.",
+      "words": [
+        {
+          "word": " We've",
+          "start": 92.76,
+          "end": 92.98,
+          "probability": 0.9537771344184875
+        },
+        {
+          "word": " tested",
+          "start": 92.98,
+          "end": 93.28,
+          "probability": 0.996254563331604
+        },
+        {
+          "word": " multiple",
+          "start": 93.28,
+          "end": 93.9,
+          "probability": 0.9966574907302856
+        },
+        {
+          "word": " market",
+          "start": 93.9,
+          "end": 94.32,
+          "probability": 0.18582361936569214
+        },
+        {
+          "word": " types,",
+          "start": 94.32,
+          "end": 94.62,
+          "probability": 0.9717522859573364
+        },
+        {
+          "word": " including",
+          "start": 94.62,
+          "end": 95.02,
+          "probability": 0.9953173398971558
+        },
+        {
+          "word": " start",
+          "start": 95.02,
+          "end": 95.32,
+          "probability": 0.7508025765419006
+        },
+        {
+          "word": " and",
+          "start": 95.32,
+          "end": 95.82,
+          "probability": 0.7576265931129456
+        },
+        {
+          "word": " standalone",
+          "start": 95.82,
+          "end": 96.92,
+          "probability": 0.19250041246414185
+        },
+        {
+          "word": " markers.",
+          "start": 96.92,
+          "end": 97.6,
+          "probability": 0.9052526354789734
+        }
+      ]
+    }
+  ]
+}

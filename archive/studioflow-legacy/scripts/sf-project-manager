@@ -1,0 +1,424 @@
+#!/usr/bin/env python3
+"""
+sf-project-manager - Intelligent project lifecycle management
+Handles multi-day/week projects with smart session tracking
+"""
+
+import sys
+import os
+import json
+import subprocess
+from pathlib import Path
+from datetime import datetime, timedelta
+import hashlib
+
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import JsonStream
+
+class ProjectManager:
+    def __init__(self):
+        self.json = JsonStream()
+        self.config_dir = Path.home() / ".config" / "studioflow"
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+        self.active_project_file = self.config_dir / "active_project.json"
+        self.projects_db = self.config_dir / "projects_database.json"
+        self.load_database()
+
+    def load_database(self):
+        """Load project database"""
+        if self.projects_db.exists():
+            with open(self.projects_db) as f:
+                self.db = json.load(f)
+        else:
+            self.db = {"projects": {}, "settings": {"auto_archive_days": 30}}
+            self.save_database()
+
+    def save_database(self):
+        """Save project database"""
+        with open(self.projects_db, "w") as f:
+            json.dump(self.db, f, indent=2)
+
+    def get_active_project(self):
+        """Get currently active project"""
+        if self.active_project_file.exists():
+            with open(self.active_project_file) as f:
+                active = json.load(f)
+
+                # Check if project still exists
+                project_path = Path(active["path"])
+                if project_path.exists():
+                    # Update last accessed time
+                    active["last_accessed"] = datetime.now().isoformat()
+                    self.set_active_project(project_path)
+                    return project_path
+        return None
+
+    def set_active_project(self, project_path):
+        """Set the active project"""
+        project_path = Path(project_path)
+
+        # Create project metadata if doesn't exist
+        metadata_file = project_path / ".studioflow" / "metadata.json"
+        if metadata_file.exists():
+            with open(metadata_file) as f:
+                metadata = json.load(f)
+        else:
+            metadata = self.create_project_metadata(project_path)
+
+        # Update active project file
+        active = {
+            "path": str(project_path),
+            "name": project_path.name,
+            "created": metadata.get("created", datetime.now().isoformat()),
+            "last_accessed": datetime.now().isoformat(),
+            "status": metadata.get("status", "active"),
+            "type": metadata.get("type", "episode")
+        }
+
+        with open(self.active_project_file, "w") as f:
+            json.dump(active, f, indent=2)
+
+        # Update database
+        project_id = self.get_project_id(project_path)
+        self.db["projects"][project_id] = active
+        self.save_database()
+
+        return project_path
+
+    def create_project_metadata(self, project_path):
+        """Create comprehensive project metadata"""
+        metadata = {
+            "created": datetime.now().isoformat(),
+            "type": "episode",  # episode, series, short, course
+            "status": "active",  # active, paused, completed, archived
+            "platform": "youtube",
+            "schedule": {
+                "target_release": None,
+                "filming_days": [],
+                "editing_days": []
+            },
+            "cameras": {
+                "A": {"model": "FX30", "settings": "S-Cinetone 4K 29.97"},
+                "B": {"model": "ZV-E10", "settings": "S-Cinetone 1080p 29.97"}
+            },
+            "sessions": [],  # Import sessions
+            "statistics": {
+                "total_clips": 0,
+                "total_duration": 0,
+                "total_size": 0,
+                "imports": 0
+            }
+        }
+
+        metadata_file = project_path / ".studioflow" / "metadata.json"
+        metadata_file.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(metadata_file, "w") as f:
+            json.dump(metadata, f, indent=2)
+
+        return metadata
+
+    def get_project_id(self, project_path):
+        """Generate unique project ID"""
+        return hashlib.md5(str(project_path).encode()).hexdigest()[:12]
+
+    def list_projects(self, status="all"):
+        """List all projects with status"""
+        projects = []
+
+        # Scan project directories
+        for location in ["/mnt/studio/Projects", "/mnt/archive/Projects"]:
+            location_path = Path(location)
+            if location_path.exists():
+                for project_dir in location_path.iterdir():
+                    if project_dir.is_dir() and (project_dir / ".studioflow").exists():
+                        metadata_file = project_dir / ".studioflow" / "metadata.json"
+                        if metadata_file.exists():
+                            with open(metadata_file) as f:
+                                metadata = json.load(f)
+
+                            if status == "all" or metadata.get("status") == status:
+                                # Calculate days since last activity
+                                last_accessed = metadata.get("last_accessed", metadata.get("created"))
+                                if last_accessed:
+                                    last_date = datetime.fromisoformat(last_accessed)
+                                    days_ago = (datetime.now() - last_date).days
+                                else:
+                                    days_ago = -1
+
+                                projects.append({
+                                    "name": project_dir.name,
+                                    "path": str(project_dir),
+                                    "status": metadata.get("status", "unknown"),
+                                    "type": metadata.get("type", "episode"),
+                                    "created": metadata.get("created", "unknown"),
+                                    "days_ago": days_ago,
+                                    "sessions": len(metadata.get("sessions", [])),
+                                    "clips": metadata.get("statistics", {}).get("total_clips", 0)
+                                })
+
+        # Sort by most recent first
+        projects.sort(key=lambda x: x["days_ago"] if x["days_ago"] >= 0 else 999)
+
+        return projects
+
+    def select_project(self):
+        """Interactive project selection"""
+        projects = self.list_projects(status="active")
+
+        if not projects:
+            print("📭 No active projects found")
+            return self.create_new_project()
+
+        print("\n📁 Active Projects:")
+        print("-" * 60)
+
+        for i, proj in enumerate(projects[:10], 1):
+            age = f"{proj['days_ago']}d ago" if proj['days_ago'] >= 0 else "never"
+            sessions = proj['sessions']
+            clips = proj['clips']
+
+            # Highlight current active project
+            active = self.get_active_project()
+            marker = "▶ " if active and str(active) == proj['path'] else "  "
+
+            print(f"{marker}{i}. {proj['name']}")
+            print(f"     Type: {proj['type']} | Last: {age} | Sessions: {sessions} | Clips: {clips}")
+
+        print(f"\n  0. Create new project")
+        print("-" * 60)
+
+        while True:
+            choice = input("\n Select project (1-10 or 0): ").strip()
+
+            if choice == "0":
+                return self.create_new_project()
+
+            try:
+                idx = int(choice) - 1
+                if 0 <= idx < len(projects):
+                    selected = Path(projects[idx]["path"])
+                    self.set_active_project(selected)
+                    return selected
+            except ValueError:
+                pass
+
+            print("Invalid choice. Try again.")
+
+    def create_new_project(self):
+        """Create new project with intelligent naming"""
+        print("\n🎬 Create New Project")
+        print("-" * 40)
+
+        # Suggest name based on date and existing projects
+        today = datetime.now().strftime("%Y%m%d")
+        existing = list(Path("/mnt/studio/Projects").glob(f"{today}_*"))
+
+        if existing:
+            # Continue today's project
+            suggestion = f"{today}_Episode_{len(existing) + 1}"
+        else:
+            # First project of the day
+            suggestion = f"{today}_Creator_AI_Hub_Episode"
+
+        name = input(f"Project name [{suggestion}]: ").strip() or suggestion
+
+        # Project type
+        print("\nProject type:")
+        print("  1. Episode (single video)")
+        print("  2. Series (multi-part)")
+        print("  3. Short (< 60 sec)")
+        print("  4. Course (educational)")
+
+        type_choice = input("Select [1]: ").strip() or "1"
+        project_types = {
+            "1": "episode",
+            "2": "series",
+            "3": "short",
+            "4": "course"
+        }
+        project_type = project_types.get(type_choice, "episode")
+
+        # Create project
+        project_path = Path("/mnt/studio/Projects") / name
+        project_path.mkdir(parents=True, exist_ok=True)
+
+        # Set up structure based on type
+        self.setup_project_structure(project_path, project_type)
+
+        # Create metadata
+        metadata = self.create_project_metadata(project_path)
+        metadata["type"] = project_type
+        metadata["name"] = name
+
+        # Save metadata
+        metadata_file = project_path / ".studioflow" / "metadata.json"
+        with open(metadata_file, "w") as f:
+            json.dump(metadata, f, indent=2)
+
+        # Set as active
+        self.set_active_project(project_path)
+
+        print(f"✅ Created project: {name}")
+        return project_path
+
+    def setup_project_structure(self, project_path, project_type):
+        """Create optimized folder structure based on project type"""
+
+        base_folders = [
+            "01_FOOTAGE/A_CAM_FX30",
+            "01_FOOTAGE/B_CAM_ZVE10",
+            "01_FOOTAGE/SCREEN",
+            "02_AUDIO/DIALOGUE",
+            "02_AUDIO/MUSIC",
+            "02_AUDIO/SFX",
+            "03_GRAPHICS/TITLES",
+            "03_GRAPHICS/THUMBNAILS",
+            "04_EDIT/TIMELINES",
+            "04_EDIT/CACHE",
+            "05_EXPORT/MASTERS",
+            "05_EXPORT/YOUTUBE"
+        ]
+
+        # Add type-specific folders
+        if project_type == "series":
+            base_folders.extend([
+                "01_FOOTAGE/SHARED_ASSETS",
+                "03_GRAPHICS/SERIES_TEMPLATE",
+                "06_EPISODES"
+            ])
+        elif project_type == "short":
+            base_folders.extend([
+                "05_EXPORT/SHORTS",
+                "05_EXPORT/REELS",
+                "05_EXPORT/TIKTOK"
+            ])
+        elif project_type == "course":
+            base_folders.extend([
+                "01_FOOTAGE/SLIDES",
+                "06_MODULES",
+                "07_RESOURCES"
+            ])
+
+        for folder in base_folders:
+            (project_path / folder).mkdir(parents=True, exist_ok=True)
+
+    def add_import_session(self, project_path, import_data):
+        """Track import session in project"""
+        metadata_file = project_path / ".studioflow" / "metadata.json"
+
+        with open(metadata_file) as f:
+            metadata = json.load(f)
+
+        session = {
+            "date": datetime.now().isoformat(),
+            "source": import_data.get("source", "unknown"),
+            "camera": import_data.get("camera", "unknown"),
+            "clips": import_data.get("clips", 0),
+            "duration": import_data.get("duration", 0),
+            "size": import_data.get("size", 0),
+            "categories": import_data.get("categories", {})
+        }
+
+        metadata["sessions"].append(session)
+
+        # Update statistics
+        stats = metadata["statistics"]
+        stats["total_clips"] += session["clips"]
+        stats["total_duration"] += session["duration"]
+        stats["total_size"] += session["size"]
+        stats["imports"] += 1
+
+        with open(metadata_file, "w") as f:
+            json.dump(metadata, f, indent=2)
+
+        return session
+
+    def get_project_status(self, project_path):
+        """Get comprehensive project status"""
+        metadata_file = project_path / ".studioflow" / "metadata.json"
+
+        if not metadata_file.exists():
+            return None
+
+        with open(metadata_file) as f:
+            metadata = json.load(f)
+
+        # Calculate progress
+        footage_dir = project_path / "01_FOOTAGE"
+        edit_dir = project_path / "04_EDIT"
+        export_dir = project_path / "05_EXPORT"
+
+        status = {
+            "name": project_path.name,
+            "type": metadata.get("type", "episode"),
+            "status": metadata.get("status", "active"),
+            "created": metadata.get("created"),
+            "sessions": len(metadata.get("sessions", [])),
+            "statistics": metadata.get("statistics", {}),
+            "progress": {
+                "footage": bool(list(footage_dir.glob("**/*.mp4"))),
+                "editing": bool(list(edit_dir.glob("**/*.drp"))),  # Resolve project
+                "exported": bool(list(export_dir.glob("**/*.mp4"))),
+            },
+            "last_session": metadata.get("sessions", [])[-1] if metadata.get("sessions") else None
+        }
+
+        return status
+
+def main():
+    manager = ProjectManager()
+
+    if len(sys.argv) > 1:
+        command = sys.argv[1]
+
+        if command == "active":
+            # Show active project
+            active = manager.get_active_project()
+            if active:
+                status = manager.get_project_status(active)
+                print(f"🎬 Active Project: {status['name']}")
+                print(f"   Type: {status['type']}")
+                print(f"   Sessions: {status['sessions']}")
+                print(f"   Clips: {status['statistics'].get('total_clips', 0)}")
+            else:
+                print("No active project. Use 'sf-project-manager select' to choose one.")
+
+        elif command == "select":
+            # Select or create project
+            project = manager.select_project()
+            print(f"\n✅ Active project: {project.name}")
+
+        elif command == "list":
+            # List all projects
+            projects = manager.list_projects()
+            for proj in projects:
+                status_icon = {"active": "🟢", "paused": "🟡", "completed": "✅", "archived": "📦"}.get(proj["status"], "❓")
+                print(f"{status_icon} {proj['name']} ({proj['type']}) - {proj['days_ago']}d ago")
+
+        elif command == "status":
+            # Show detailed status
+            active = manager.get_active_project()
+            if active:
+                status = manager.get_project_status(active)
+                print(json.dumps(status, indent=2))
+
+        elif command == "add-session":
+            # Add import session to project
+            if len(sys.argv) < 4:
+                print("Usage: sf-project-manager add-session <project_path> <json_data>")
+                sys.exit(1)
+            project_path = Path(sys.argv[2])
+            import_data = json.loads(sys.argv[3])
+            session = manager.add_import_session(project_path, import_data)
+            print(json.dumps({"status": "success", "session": session}))
+
+        else:
+            print(f"Unknown command: {command}")
+    else:
+        # Interactive mode - select project
+        project = manager.select_project()
+        print(f"\n✅ Working on: {project.name}")
+
+if __name__ == "__main__":
+    main()

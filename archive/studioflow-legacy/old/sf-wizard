@@ -1,0 +1,541 @@
+#!/usr/bin/env python3
+"""
+StudioFlow Interactive Wizard System
+Setup and workflow wizards using simplified WizardLib
+"""
+
+import sys
+import os
+import json
+import subprocess
+from pathlib import Path
+from datetime import datetime
+
+sys.path.insert(0, '/mnt/projects/studioflow')
+from wizardlib import (
+    Wizard, WizardBuilder, create_wizard,
+    AIPlugin, ContextPlugin,
+    required, email, number, path_exists
+)
+from sfcore import STORAGE_TIERS, Project, CONFIG_DIR
+
+# ============================================
+# CUSTOM VALIDATORS
+# ============================================
+
+def path_writable(value: str) -> tuple[bool, str]:
+    """Check if path is writable"""
+    path = Path(value)
+    if path.exists():
+        return os.access(path, os.W_OK), "Path is not writable"
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return True, ""
+    except:
+        return False, "Cannot create directory"
+
+def api_key_validator(value: str) -> tuple[bool, str]:
+    """Validate API key format"""
+    if not value:
+        return True, ""  # Optional
+    if len(value) < 20:
+        return False, "API key seems too short"
+    return True, ""
+
+# ============================================
+# STUDIOFLOW AI PLUGIN
+# ============================================
+
+class StudioFlowAI(AIPlugin):
+    """AI plugin for StudioFlow wizards"""
+
+    def parse_nlp(self, text: str) -> dict:
+        """Parse natural language project descriptions"""
+        keywords = text.lower().split()
+
+        # Detect platform hints
+        platform = None
+        if 'youtube' in keywords:
+            platform = 'youtube'
+        elif 'tiktok' in keywords or 'viral' in keywords:
+            platform = 'tiktok'
+        elif 'instagram' in keywords or 'reels' in keywords:
+            platform = 'instagram'
+
+        # Detect content type
+        content_type = 'general'
+        if 'tutorial' in keywords or 'education' in keywords:
+            content_type = 'tutorial'
+        elif 'gaming' in keywords or 'gameplay' in keywords:
+            content_type = 'gaming'
+        elif 'review' in keywords:
+            content_type = 'review'
+
+        return {
+            'text': text,
+            'platform': platform,
+            'content_type': content_type,
+            'keywords': keywords
+        }
+
+    def suggest_default(self, step: dict, state: dict) -> dict:
+        """Suggest smart defaults based on context"""
+        step_id = step['id']
+
+        # Platform suggestions
+        if step_id == 'platform' and 'description' in state:
+            desc = state['description']
+            if desc.get('platform'):
+                return {'value': desc['platform'], 'confidence': 0.8}
+
+        # Project type suggestions
+        if step_id == 'project_type' and 'description' in state:
+            desc = state['description']
+            if desc.get('content_type'):
+                return {'value': desc['content_type'], 'confidence': 0.7}
+
+        return {'value': None, 'confidence': 0}
+
+# ============================================
+# CONTEXT PLUGIN
+# ============================================
+
+context = ContextPlugin()
+ai = StudioFlowAI()
+
+# ============================================
+# SETUP WIZARD
+# ============================================
+
+def create_setup_wizard() -> Wizard:
+    """First-run setup wizard for StudioFlow"""
+
+    wizard = (
+        create_wizard("🚀 StudioFlow Initial Setup")
+        .description("Complete initial setup for StudioFlow suite")
+
+        # User information
+        .text("creator_name", "What's your creator name?",
+              default=os.environ.get("USER", "Creator"))
+
+        # Primary platform
+        .choice("primary_platform", "What's your primary platform?",
+                ["YouTube", "Instagram", "TikTok", "Multi-platform"])
+
+        # Content types (multi-select)
+        .multi("content_types", "What type of content do you create?",
+               ["Tutorials", "Reviews", "Vlogs", "Gaming", "Tech",
+                "Education", "Entertainment", "Music", "Podcasts"])
+
+        # Experience level
+        .choice("experience", "What's your video editing experience?",
+                ["Beginner", "Intermediate", "Advanced"])
+
+        # Check tools
+        .bool("has_obs", "Do you have OBS Studio installed?", default=True)
+        .bool("has_resolve", "Do you have DaVinci Resolve installed?", default=True)
+
+        # Storage configuration
+        .text("projects_path", "Where should projects be stored?",
+              default="/mnt/studio/Projects")
+        .validate(path_writable)
+
+        .text("archive_path", "Where should completed projects be archived?",
+              default="/mnt/archive")
+        .validate(path_writable)
+
+        # Optional features
+        .bool("enable_ai", "Enable AI features? (requires API keys)")
+
+        .text("openai_key", "OpenAI API key (optional):")
+        .when(lambda s: s.get('enable_ai'))
+        .validate(api_key_validator)
+
+        .bool("enable_websocket", "Enable OBS WebSocket automation?")
+        .when(lambda s: s.get('has_obs'))
+
+        .bool("enable_analytics", "Track performance analytics?", default=True)
+
+        # Optimization goal
+        .choice("optimization_goal", "What's your main goal?",
+                ["Maximum views", "Subscriber growth", "Watch time", "Engagement"])
+
+        # Upload schedule
+        .choice("upload_frequency", "How often do you upload?",
+                ["Daily", "2-3 times per week", "Weekly", "Bi-weekly", "Monthly"])
+
+        # Add context awareness
+        .context(context.handle)
+
+        .build()
+    )
+
+    return wizard
+
+# ============================================
+# PROJECT WIZARD
+# ============================================
+
+def create_project_wizard() -> Wizard:
+    """Wizard for creating new projects"""
+
+    # Dynamic step generator for platform-specific options
+    def add_platform_steps(state, idx):
+        platform = state.get('platform', '').lower()
+
+        if platform == 'youtube':
+            return [
+                {'id': 'video_length', 'type': 'choice',
+                 'prompt': 'Target video length',
+                 'options': ['Short (< 5 min)', 'Medium (5-15 min)', 'Long (15+ min)']},
+                {'id': 'youtube_category', 'type': 'choice',
+                 'prompt': 'YouTube category',
+                 'options': ['Gaming', 'Education', 'Entertainment', 'Tech', 'Music']}
+            ]
+        elif platform == 'tiktok':
+            return [
+                {'id': 'video_style', 'type': 'choice',
+                 'prompt': 'TikTok style',
+                 'options': ['Trending', 'Educational', 'Comedy', 'Dance', 'DIY']},
+                {'id': 'use_trending_audio', 'type': 'bool',
+                 'prompt': 'Use trending audio?', 'default': True}
+            ]
+        elif platform == 'instagram':
+            return [
+                {'id': 'content_format', 'type': 'choice',
+                 'prompt': 'Instagram format',
+                 'options': ['Reels', 'IGTV', 'Stories', 'Posts']},
+                {'id': 'aspect_ratio', 'type': 'choice',
+                 'prompt': 'Aspect ratio',
+                 'options': ['9:16 (Vertical)', '1:1 (Square)', '16:9 (Horizontal)']}
+            ]
+
+        return []
+
+    wizard = (
+        create_wizard("📁 Create New Project")
+        .description("Set up a new video project with AI assistance")
+
+        # Natural language description
+        .nlp("description", "Describe your project in natural language")
+
+        # Basic info
+        .text("project_name", "Project name")
+        .validate(required)
+
+        .choice("platform", "Target platform",
+                ["YouTube", "Instagram", "TikTok"])
+
+        .choice("project_type", "Project type",
+                ["Tutorial", "Review", "Vlog", "Gaming", "Short"])
+
+        # Viral optimization
+        .bool("optimize_viral", "Optimize for virality?", default=True)
+
+        .text("target_audience", "Target audience (e.g., 'beginner programmers')")
+
+        # Dynamic platform-specific steps
+        .dynamic(add_platform_steps)
+
+        # Storage
+        .choice("storage_tier", "Initial storage tier",
+                ["ingest", "active", "render"])
+
+        # Setup automation
+        .bool("auto_setup", "Auto-setup OBS scenes?", default=True)
+        .bool("generate_script", "Generate AI script?", default=False)
+
+        # Add AI and context
+        .ai(ai.handle)
+        .context(context.handle)
+
+        .build()
+    )
+
+    return wizard
+
+# ============================================
+# WORKFLOW WIZARD
+# ============================================
+
+def create_workflow_wizard() -> Wizard:
+    """Wizard for creating automated workflows"""
+
+    wizard = (
+        create_wizard("⚙️ Create Workflow")
+        .description("Build an automated content production workflow")
+
+        .text("workflow_name", "Workflow name")
+        .validate(required)
+
+        .multi("workflow_steps", "Select workflow steps",
+               ["Capture", "Import", "Edit", "Color Grade", "Audio Process",
+                "Export", "Optimize", "Upload", "Analytics"])
+
+        .choice("trigger", "Workflow trigger",
+                ["Manual", "On file creation", "Scheduled", "After recording"])
+
+        .bool("parallel_processing", "Enable parallel processing?", default=True)
+
+        .choice("error_handling", "On error",
+                ["Stop workflow", "Skip step", "Retry", "Notify"])
+
+        .bool("save_template", "Save as template?", default=True)
+
+        .context(context.handle)
+        .build()
+    )
+
+    return wizard
+
+# ============================================
+# PLATFORM OPTIMIZATION WIZARD
+# ============================================
+
+def create_platform_wizard() -> Wizard:
+    """Platform-specific optimization wizard"""
+
+    wizard = (
+        create_wizard("📱 Platform Optimization")
+        .description("Optimize your content for specific platforms")
+
+        .choice("platform", "Select platform",
+                ["YouTube", "Instagram", "TikTok", "All platforms"])
+
+        .text("video_title", "Video title/topic")
+        .validate(required)
+
+        # Platform-specific optimizations
+        .bool("generate_titles", "Generate viral title variants?", default=True)
+        .bool("optimize_thumbnail", "Optimize thumbnail?", default=True)
+        .bool("generate_tags", "Generate tags/hashtags?", default=True)
+        .bool("optimize_description", "Optimize description?", default=True)
+
+        .choice("optimization_style", "Optimization style",
+                ["Maximum reach", "Target niche", "Trending", "Evergreen"])
+
+        .bool("ab_testing", "Enable A/B testing?", default=False)
+
+        .ai(ai.handle)
+        .context(context.handle)
+        .build()
+    )
+
+    return wizard
+
+# ============================================
+# TROUBLESHOOTING WIZARD
+# ============================================
+
+def create_trouble_wizard() -> Wizard:
+    """Troubleshooting and diagnostics wizard"""
+
+    wizard = (
+        create_wizard("🔧 Troubleshooting")
+        .description("Diagnose and fix common issues")
+
+        .choice("issue_type", "What kind of issue?",
+                ["OBS not connecting", "Resolve crashes", "Export problems",
+                 "Storage issues", "Performance", "AI features", "Other"])
+
+        .text("issue_description", "Describe the issue")
+
+        .bool("run_diagnostics", "Run automatic diagnostics?", default=True)
+
+        .bool("check_dependencies", "Check all dependencies?", default=True)
+
+        .bool("reset_config", "Reset configuration to defaults?", default=False)
+
+        .context(context.handle)
+        .build()
+    )
+
+    return wizard
+
+# ============================================
+# WIZARD LAUNCHER
+# ============================================
+
+def show_wizard_menu():
+    """Display wizard selection menu"""
+    print("\n" + "=" * 60)
+    print("🧙 StudioFlow Wizard System")
+    print("=" * 60)
+    print("\nAvailable Wizards:")
+    print("  1. 🚀 Initial Setup      - First-time configuration")
+    print("  2. 📁 Create Project     - New video project")
+    print("  3. ⚙️  Create Workflow   - Automated workflows")
+    print("  4. 📱 Platform Optimize  - Platform-specific optimization")
+    print("  5. 🔧 Troubleshooting    - Diagnose issues")
+    print("  6. 📋 List Recent        - Show recent sessions")
+    print("  7. ❓ Help               - Show help")
+    print("  0. 🚪 Exit")
+    print()
+
+    return input("Select wizard (1-7, 0 to exit): ").strip()
+
+def list_recent_sessions():
+    """List recent wizard sessions"""
+    context_dir = Path.home() / ".wizard_context"
+    if not context_dir.exists():
+        print("No recent sessions found")
+        return
+
+    sessions = sorted(context_dir.glob("session_*.json"), key=lambda x: x.stat().st_mtime, reverse=True)[:10]
+
+    if not sessions:
+        print("No recent sessions found")
+        return
+
+    print("\n📋 Recent Wizard Sessions:")
+    for i, session_file in enumerate(sessions, 1):
+        with open(session_file) as f:
+            data = json.load(f)
+        timestamp = datetime.fromtimestamp(session_file.stat().st_mtime)
+        wizard_type = data.get('wizard_type', 'Unknown')
+        print(f"  {i}. {wizard_type} - {timestamp.strftime('%Y-%m-%d %H:%M')}")
+
+def main():
+    """Main wizard launcher"""
+
+    # Handle command line arguments
+    if len(sys.argv) > 1:
+        wizard_type = sys.argv[1].lower()
+
+        if wizard_type in ['list', 'ls']:
+            list_recent_sessions()
+            return
+        elif wizard_type == 'recent':
+            list_recent_sessions()
+            return
+        elif wizard_type in ['help', '--help', '-h']:
+            print("Usage: sf-wizard [wizard_type]")
+            print("\nWizard types:")
+            print("  setup     - Initial setup wizard")
+            print("  project   - Create new project")
+            print("  workflow  - Create workflow")
+            print("  platform  - Platform optimization")
+            print("  trouble   - Troubleshooting")
+            print("  list      - List recent sessions")
+            print("  help      - Show this help")
+            return
+
+        # Direct wizard launch
+        wizards = {
+            'setup': create_setup_wizard,
+            'project': create_project_wizard,
+            'workflow': create_workflow_wizard,
+            'platform': create_platform_wizard,
+            'trouble': create_trouble_wizard,
+        }
+
+        if wizard_type in wizards:
+            wizard = wizards[wizard_type]()
+            result = wizard.run()
+
+            if result:
+                print("\n✅ Wizard completed successfully!")
+
+                # Save session
+                session_file = Path.home() / ".wizard_context" / f"session_{wizard_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                session_file.parent.mkdir(exist_ok=True)
+                with open(session_file, 'w') as f:
+                    json.dump({'wizard_type': wizard_type, 'result': result}, f, indent=2)
+
+                # Apply configuration if setup wizard
+                if wizard_type == 'setup':
+                    apply_setup_config(result)
+                elif wizard_type == 'project':
+                    create_project_from_wizard(result)
+            return
+
+    # Interactive menu
+    while True:
+        choice = show_wizard_menu()
+
+        if choice == '0':
+            print("👋 Goodbye!")
+            break
+        elif choice == '1':
+            wizard = create_setup_wizard()
+            result = wizard.run()
+            if result:
+                apply_setup_config(result)
+        elif choice == '2':
+            wizard = create_project_wizard()
+            result = wizard.run()
+            if result:
+                create_project_from_wizard(result)
+        elif choice == '3':
+            wizard = create_workflow_wizard()
+            result = wizard.run()
+        elif choice == '4':
+            wizard = create_platform_wizard()
+            result = wizard.run()
+        elif choice == '5':
+            wizard = create_trouble_wizard()
+            result = wizard.run()
+        elif choice == '6':
+            list_recent_sessions()
+        elif choice == '7':
+            print("\n📚 StudioFlow Wizard Help:")
+            print("  • Each wizard guides you through specific tasks")
+            print("  • Use 'back' to go to previous step")
+            print("  • Use 'quit' to exit a wizard")
+            print("  • Press Enter to accept default values")
+            print("  • Your choices are remembered for next time")
+        else:
+            print("Invalid choice. Please select 1-7 or 0 to exit.")
+
+def apply_setup_config(config: dict):
+    """Apply setup wizard configuration"""
+    print("\n📝 Applying configuration...")
+
+    # Create config directory
+    CONFIG_DIR.mkdir(exist_ok=True)
+
+    # Save main config
+    config_file = CONFIG_DIR / "studioflow.json"
+    with open(config_file, 'w') as f:
+        json.dump(config, f, indent=2)
+
+    print(f"✅ Configuration saved to {config_file}")
+
+    # Create storage directories
+    if 'projects_path' in config:
+        Path(config['projects_path']).mkdir(parents=True, exist_ok=True)
+        print(f"✅ Created projects directory: {config['projects_path']}")
+
+    if 'archive_path' in config:
+        Path(config['archive_path']).mkdir(parents=True, exist_ok=True)
+        print(f"✅ Created archive directory: {config['archive_path']}")
+
+    print("\n🎉 StudioFlow is ready to use!")
+    print("Run 'sf-wizard project' to create your first project")
+
+def create_project_from_wizard(config: dict):
+    """Create project from wizard configuration"""
+    print("\n📁 Creating project...")
+
+    project_name = config.get('project_name', 'Untitled')
+    platform = config.get('platform', 'youtube').lower()
+
+    # Use sf-project command
+    cmd = ['sf-project', 'create', project_name, '--platform', platform]
+
+    if config.get('optimize_viral'):
+        cmd.append('--viral')
+
+    if config.get('auto_setup'):
+        cmd.append('--auto-setup')
+
+    subprocess.run(cmd)
+
+    if config.get('generate_script'):
+        print("\n🤖 Generating AI script...")
+        subprocess.run(['sf-ai', 'script', project_name])
+
+    print(f"\n✅ Project '{project_name}' created successfully!")
+
+if __name__ == "__main__":
+    main()

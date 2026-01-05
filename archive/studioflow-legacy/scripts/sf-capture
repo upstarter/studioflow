@@ -1,0 +1,316 @@
+#!/usr/bin/env python3
+"""
+sf-capture - StudioFlow capture tool
+Quick screenshots and screen recordings
+"""
+
+import sys
+import argparse
+import subprocess
+import shutil
+from pathlib import Path
+from datetime import datetime
+
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import (
+    JsonStream, STORAGE_TIERS,
+    find_project, sanitize_name
+)
+
+# Capture-specific paths
+CAPTURE_DIR = STORAGE_TIERS["ingest"] / "captures"
+TODAY_DIR = CAPTURE_DIR / "today"
+INBOX_DIR = CAPTURE_DIR / "inbox"
+
+def ensure_capture_dirs():
+    """Ensure capture directories exist"""
+    TODAY_DIR.mkdir(parents=True, exist_ok=True)
+    INBOX_DIR.mkdir(parents=True, exist_ok=True)
+
+def snap(name: str = None, project: str = None):
+    """Take a screenshot"""
+    ensure_capture_dirs()
+
+    # Generate filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if name:
+        filename = f"{timestamp}_{sanitize_name(name)}.png"
+    else:
+        filename = f"{timestamp}.png"
+
+    # Determine target directory
+    if project:
+        proj = find_project(project)
+        if not proj:
+            JsonStream.error(f"Project not found: {project}")
+        # Try to find captures directory in project
+        target_dir = proj.path / "01_CAPTURES"
+        if not target_dir.exists():
+            target_dir = proj.path / "CAPTURES"
+            if not target_dir.exists():
+                target_dir = proj.path
+        target_dir.mkdir(parents=True, exist_ok=True)
+        filepath = target_dir / filename
+    else:
+        filepath = TODAY_DIR / filename
+
+    # Take screenshot using gnome-screenshot
+    try:
+        result = subprocess.run(
+            ["gnome-screenshot", "-f", str(filepath)],
+            capture_output=True,
+            check=True
+        )
+        JsonStream.success(
+            f"Captured: {filename}",
+            {"path": str(filepath), "filename": filename}
+        )
+    except subprocess.CalledProcessError:
+        # Fallback to scrot if available
+        try:
+            result = subprocess.run(
+                ["scrot", str(filepath)],
+                capture_output=True,
+                check=True
+            )
+            JsonStream.success(
+                f"Captured: {filename}",
+                {"path": str(filepath), "filename": filename}
+            )
+        except:
+            JsonStream.error("Screenshot failed. Install gnome-screenshot or scrot")
+
+def record(name: str = None, duration: int = None):
+    """Start screen recording"""
+    ensure_capture_dirs()
+
+    # Generate filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if name:
+        filename = f"{timestamp}_{sanitize_name(name)}.mp4"
+    else:
+        filename = f"{timestamp}_recording.mp4"
+
+    filepath = TODAY_DIR / filename
+
+    # Use ffmpeg for recording
+    cmd = [
+        "ffmpeg",
+        "-video_size", "1920x1080",
+        "-framerate", "30",
+        "-f", "x11grab",
+        "-i", ":0.0",
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-crf", "23"
+    ]
+
+    if duration:
+        cmd.extend(["-t", str(duration)])
+
+    cmd.append(str(filepath))
+
+    print(f"Recording to: {filename}")
+    print("Press Ctrl+C to stop recording...")
+
+    try:
+        subprocess.run(cmd, check=True)
+        JsonStream.success(
+            f"Recording saved: {filename}",
+            {"path": str(filepath), "filename": filename}
+        )
+    except KeyboardInterrupt:
+        print("\nRecording stopped")
+        JsonStream.success(
+            f"Recording saved: {filename}",
+            {"path": str(filepath), "filename": filename}
+        )
+    except subprocess.CalledProcessError as e:
+        JsonStream.error(f"Recording failed: {e}")
+
+def organize(project: str = None):
+    """Organize today's captures into project"""
+    ensure_capture_dirs()
+
+    # Find target project
+    if not project:
+        # Try to find most recent project
+        from sfcore import list_projects
+        projects = list_projects()
+        if not projects:
+            JsonStream.error("No projects found")
+        project = projects[0].name
+
+    proj = find_project(project)
+    if not proj:
+        JsonStream.error(f"Project not found: {project}")
+
+    # Find captures directory in project
+    target_dir = proj.path / "01_CAPTURES"
+    if not target_dir.exists():
+        target_dir = proj.path / "CAPTURES"
+        if not target_dir.exists():
+            target_dir = proj.path / "captures"
+            if not target_dir.exists():
+                target_dir = proj.path
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    # Move files from today directory
+    moved = 0
+    for file in TODAY_DIR.glob("*"):
+        if file.is_file():
+            target_path = target_dir / file.name
+            shutil.move(str(file), str(target_path))
+            moved += 1
+
+    JsonStream.success(
+        f"Organized {moved} captures to {proj.name}",
+        {"count": moved, "project": proj.name, "path": str(target_dir)}
+    )
+
+def list_captures(location: str = "today"):
+    """List captures in specified location"""
+    ensure_capture_dirs()
+
+    if location == "today":
+        search_dir = TODAY_DIR
+    elif location == "inbox":
+        search_dir = INBOX_DIR
+    else:
+        search_dir = CAPTURE_DIR
+
+    captures = []
+    for file in search_dir.glob("*"):
+        if file.is_file():
+            stat = file.stat()
+            captures.append({
+                "name": file.name,
+                "path": str(file),
+                "size_mb": round(stat.st_size / (1024 * 1024), 2),
+                "modified": datetime.fromtimestamp(stat.st_mtime).isoformat()
+            })
+
+    # Sort by modified time (newest first)
+    captures.sort(key=lambda x: x["modified"], reverse=True)
+
+    if captures:
+        print(f"Captures in {location}:")
+        print("-" * 60)
+        for cap in captures[:20]:  # Show last 20
+            print(f"{cap['name']} ({cap['size_mb']} MB)")
+        if len(captures) > 20:
+            print(f"...and {len(captures) - 20} more")
+    else:
+        print(f"No captures in {location}")
+
+    JsonStream.emit({"captures": captures})
+
+def crop(image: str, browser: str = "chrome"):
+    """Crop browser chrome from screenshot"""
+    from pathlib import Path
+
+    image_path = Path(image)
+    if not image_path.exists():
+        # Try in today directory
+        image_path = TODAY_DIR / image
+        if not image_path.exists():
+            JsonStream.error(f"Image not found: {image}")
+
+    # Browser crop presets (pixels to remove)
+    crops = {
+        "chrome": "1920x960+0+120",   # Remove 120px from top
+        "firefox": "1920x970+0+110",  # Remove 110px from top
+        "safari": "1920x980+0+100",   # Remove 100px from top
+        "arc": "1920x950+0+130"       # Remove 130px from top
+    }
+
+    crop_setting = crops.get(browser, crops["chrome"])
+    output_path = image_path.parent / f"{image_path.stem}_cropped{image_path.suffix}"
+
+    # Use ImageMagick to crop
+    try:
+        subprocess.run(
+            ["convert", str(image_path), "-crop", crop_setting, str(output_path)],
+            capture_output=True,
+            check=True
+        )
+        JsonStream.success(
+            f"Cropped: {output_path.name}",
+            {"path": str(output_path), "original": str(image_path)}
+        )
+    except subprocess.CalledProcessError:
+        JsonStream.error("Crop failed. Install ImageMagick: sudo apt install imagemagick")
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="sf-capture - StudioFlow capture tool",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  sf-capture snap
+  sf-capture snap "claude-response"
+  sf-capture snap --project "Current Video"
+  sf-capture record
+  sf-capture record "tutorial" --duration 60
+  sf-capture organize
+  sf-capture list
+  sf-capture crop screenshot.png
+
+Captures are saved to:
+  Today: /mnt/ingest/captures/today/
+  Then organized to project directories
+        """
+    )
+
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # Snap command
+    snap_parser = subparsers.add_parser("snap", help="Take screenshot")
+    snap_parser.add_argument("name", nargs="?", help="Screenshot name")
+    snap_parser.add_argument("-p", "--project", help="Target project")
+
+    # Record command
+    record_parser = subparsers.add_parser("record", help="Record screen")
+    record_parser.add_argument("name", nargs="?", help="Recording name")
+    record_parser.add_argument("-d", "--duration", type=int,
+                              help="Duration in seconds")
+
+    # Organize command
+    organize_parser = subparsers.add_parser("organize", help="Organize captures")
+    organize_parser.add_argument("project", nargs="?", help="Target project")
+
+    # List command
+    list_parser = subparsers.add_parser("list", help="List captures")
+    list_parser.add_argument("location", nargs="?", default="today",
+                            choices=["today", "inbox", "all"],
+                            help="Location to list")
+
+    # Crop command
+    crop_parser = subparsers.add_parser("crop", help="Crop browser chrome")
+    crop_parser.add_argument("image", help="Image to crop")
+    crop_parser.add_argument("-b", "--browser", default="chrome",
+                            choices=["chrome", "firefox", "safari", "arc"],
+                            help="Browser type")
+
+    args = parser.parse_args()
+
+    if args.command == "snap":
+        snap(args.name, args.project)
+
+    elif args.command == "record":
+        record(args.name, args.duration)
+
+    elif args.command == "organize":
+        organize(args.project)
+
+    elif args.command == "list":
+        list_captures(args.location)
+
+    elif args.command == "crop":
+        crop(args.image, args.browser)
+
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()

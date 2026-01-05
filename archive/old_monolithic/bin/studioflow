@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+"""
+StudioFlow - Unified command for all project types
+Includes original StudioFlow and AI Creator Studio extensions
+"""
+
+import sys
+import os
+import argparse
+from pathlib import Path
+
+# Add studioflow to path
+sys.path.insert(0, '/mnt/projects/studioflow/src')
+sys.path.insert(0, '/mnt/projects/studioflow')
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='StudioFlow - Professional Video Project Organization',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Standard StudioFlow project
+  studioflow create "My YouTube Video" --template youtube
+
+  # AI Creator Studio project (with comparison)
+  studioflow ai-create "AI Music Battle" --tools suno udio
+
+  # AI Tutorial project
+  studioflow ai-create "Cursor Tutorial" --type tutorial
+
+  # Quick project with defaults
+  studioflow quick "Test Project"
+        """
+    )
+
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+
+    # Standard create command
+    create_parser = subparsers.add_parser('create', help='Create standard StudioFlow project')
+    create_parser.add_argument('name', help='Project name')
+    create_parser.add_argument('--template', default='youtube',
+                              choices=['youtube', 'commercial', 'documentary', 'standard'],
+                              help='Project template')
+    create_parser.add_argument('--location', type=Path, default=Path.cwd(),
+                              help='Project location')
+
+    # AI Creator command
+    ai_parser = subparsers.add_parser('ai-create', help='Create AI Creator Studio project')
+    ai_parser.add_argument('name', help='Project name')
+    ai_parser.add_argument('--type', default='ai_battle',
+                          choices=['ai_battle', 'ai_tutorial', 'ai_review'],
+                          help='AI project type')
+    ai_parser.add_argument('--tools', nargs='+', help='AI tools to compare')
+
+    # Quick project command
+    quick_parser = subparsers.add_parser('quick', help='Quick project with minimal setup')
+    quick_parser.add_argument('name', help='Project name')
+
+    # Status command
+    status_parser = subparsers.add_parser('status', help='Show storage and project status')
+
+    # List projects command
+    list_parser = subparsers.add_parser('list', help='List all projects')
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        return 1
+
+    if args.command == 'create':
+        # Use original StudioFlow
+        from studioflow.core.project.generator import StudioFlowGenerator
+
+        generator = StudioFlowGenerator()
+        result = generator.create_project(
+            name=args.name,
+            location=args.location,
+            template=args.template
+        )
+
+        if result['success']:
+            print(f"✅ Project created: {result['path']}")
+            print(f"⏱️ Time: {result['time']:.3f}s")
+        else:
+            print(f"❌ Error: {result.get('error', 'Unknown error')}")
+            return 1
+
+    elif args.command == 'ai-create':
+        # Use AI Creator extension
+        from studioflow.extensions.ai_creator import AICreatorExtension
+
+        config_path = Path('/mnt/projects/studioflow/config/ai_creator_template.yml')
+        extension = AICreatorExtension(str(config_path))
+
+        project = extension.quick_project(
+            name=args.name,
+            project_type=args.type,
+            tools=args.tools
+        )
+
+        print(f"\n🎬 Ready for DaVinci Resolve!")
+        print(f"📁 Import: {project}/05_EDITING/resolve_import.py")
+
+    elif args.command == 'quick':
+        # Quick minimal project
+        from studioflow.core.project.generator import StudioFlowGenerator
+
+        generator = StudioFlowGenerator()
+        # Use minimal template
+        result = generator.create_project(
+            name=args.name,
+            location=Path('/mnt/resolve/Projects'),
+            template='youtube',
+            metadata={'quick': True, 'minimal': True}
+        )
+
+        if result['success']:
+            print(f"✅ Quick project: {result['path']}")
+        else:
+            print(f"❌ Error: {result.get('error', 'Unknown error')}")
+            return 1
+
+    elif args.command == 'status':
+        # Show storage status
+        from studioflow.extensions.ai_creator import AICreatorExtension
+        import shutil
+
+        print("📊 StudioFlow Storage Status")
+        print("=" * 50)
+
+        storage_paths = {
+            'Ingest': Path('/mnt/ingest'),
+            'Active': Path('/mnt/resolve/Projects'),
+            'Render': Path('/mnt/render'),
+            'Library': Path('/mnt/library'),
+            'Archive': Path('/mnt/archive')
+        }
+
+        for name, path in storage_paths.items():
+            if path.exists():
+                usage = shutil.disk_usage(path)
+                free_gb = usage.free / (1024**3)
+                used_pct = (usage.used / usage.total) * 100
+                print(f"{name:10} {free_gb:6.1f}GB free ({used_pct:.1f}% used)")
+
+    elif args.command == 'list':
+        # List projects
+        projects_dir = Path('/mnt/resolve/Projects')
+        if projects_dir.exists():
+            projects = sorted([d for d in projects_dir.iterdir() if d.is_dir()],
+                            key=lambda x: x.stat().st_mtime, reverse=True)
+
+            print("📁 Recent Projects:")
+            print("=" * 50)
+            for project in projects[:10]:
+                print(f"  {project.name}")
+        else:
+            print("No projects directory found")
+
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

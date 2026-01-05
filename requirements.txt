@@ -1,0 +1,29 @@
+# Core dependencies
+typer>=0.9.0
+rich>=13.7.0
+pyyaml>=6.0.1
+python-dotenv>=1.0.0
+httpx>=0.25.0
+
+# Media processing
+ffmpeg-python>=0.2.0
+Pillow>=10.0.0
+opencv-python>=4.8.0
+moviepy>=1.0.3
+
+# Audio processing and AI
+openai-whisper>=20231117
+torch>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# YouTube and API integrations
+google-api-python-client>=2.100.0
+google-auth-httplib2>=0.1.1
+google-auth-oauthlib>=1.1.0
+
+# Development tools (optional)
+pytest>=7.4.0
+black>=23.0.0
+mypy>=1.0.0
+ruff>=0.1.0

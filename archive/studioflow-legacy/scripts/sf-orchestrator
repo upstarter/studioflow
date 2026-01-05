@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+"""
+StudioFlow Orchestrator
+Main pipeline that coordinates all StudioFlow operations
+Called by cf-card-import after media is imported
+
+Refactored to use JSON events and environment variables instead of sfcore
+"""
+
+import sys
+import json
+import subprocess
+import os
+from pathlib import Path
+from datetime import datetime
+from typing import Dict, Any, List, Optional
+
+# Use minimal utilities instead of sfcore
+from sf_utils import JsonEvent, ProjectInfo, find_project_path, STORAGE_TIERS
+
+class StudioFlowOrchestrator:
+    """Main orchestration pipeline - decoupled version"""
+
+    def __init__(self):
+        # Get project from environment or command line
+        self.current_project = self._get_current_project()
+
+    def _get_current_project(self) -> Optional[ProjectInfo]:
+        """Get current project from environment or config"""
+        # Try environment variable first
+        project = ProjectInfo.from_env()
+        if project:
+            return project
+
+        # Try reading current project file
+        current_file = Path.home() / ".studioflow" / "current_project"
+        if current_file.exists():
+            project_name = current_file.read_text().strip()
+            return ProjectInfo.from_name(project_name)
+
+        return None
+
+    def process_import(self, import_path: Path):
+        """Process imported media files"""
+        if not self.current_project:
+            JsonEvent.error("No current project set")
+            print("⚠️  No current project set!")
+            print("   Run: sf-project create 'Project Name' first")
+            return False
+
+        print(f"\n{'='*60}")
+        print("STUDIOFLOW ORCHESTRATOR")
+        print(f"{'='*60}")
+        print(f"Project: {self.current_project.name}")
+        print(f"Import: {import_path}")
+        print(f"{'='*60}\n")
+
+        # Emit start event
+        JsonEvent.emit("orchestrator_started", {
+            "project": self.current_project.name,
+            "import_path": str(import_path)
+        })
+
+        # Step 1: Find all video files
+        print("📹 Finding video files...")
+        video_files = self.find_video_files(import_path)
+        print(f"   Found {len(video_files)} video files")
+
+        if not video_files:
+            print("   No video files found")
+            return True
+
+        # Step 2: Analyze clips
+        print("\n🔍 Analyzing clips...")
+        clips_data = []
+        categories_count = {}
+
+        for i, video_file in enumerate(video_files, 1):
+            print(f"   [{i}/{len(video_files)}] {video_file.name}...", end="")
+            clip_info = self._analyze_clip(video_file)
+
+            if 'error' not in clip_info:
+                clips_data.append(clip_info)
+                category = clip_info.get('category', 'unknown')
+                categories_count[category] = categories_count.get(category, 0) + 1
+                print(f" {category} ({clip_info.get('duration', 0):.1f}s)")
+
+                # Emit clip analyzed event
+                JsonEvent.emit("clip_analyzed", clip_info)
+            else:
+                print(f" ERROR")
+
+        # Step 3: Save clips metadata
+        print("\n💾 Saving metadata...")
+        clips_file = self.current_project.path / ".studioflow" / "clips.json"
+        clips_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Load existing clips if any
+        existing_clips = []
+        if clips_file.exists():
+            with open(clips_file) as f:
+                existing_clips = json.load(f)
+
+        # Add new clips (avoid duplicates based on filename)
+        existing_names = {c['filename'] for c in existing_clips}
+        new_clips = [c for c in clips_data if c['filename'] not in existing_names]
+
+        all_clips = existing_clips + new_clips
+        with open(clips_file, 'w') as f:
+            json.dump(all_clips, f, indent=2)
+
+        print(f"   ✓ Saved {len(new_clips)} new clips (total: {len(all_clips)})")
+
+        # Step 4: Show categorization summary
+        print("\n📊 Categorization:")
+        for category, count in sorted(categories_count.items()):
+            print(f"   {category}: {count} clips")
+
+        # Step 5: Add import session
+        print("\n📝 Recording import session...")
+        session_data = {
+            "timestamp": datetime.now().isoformat(),
+            "clips_imported": len(new_clips),
+            "total_duration": sum(c.get('duration', 0) for c in new_clips),
+            "source": str(import_path)
+        }
+
+        # Save session data
+        sessions_file = self.current_project.path / ".studioflow" / "sessions.json"
+        sessions = []
+        if sessions_file.exists():
+            with open(sessions_file) as f:
+                sessions = json.load(f)
+        sessions.append(session_data)
+        with open(sessions_file, 'w') as f:
+            json.dump(sessions, f, indent=2)
+
+        print(f"   ✓ Session recorded")
+        JsonEvent.emit("import_session_recorded", session_data)
+
+        # Step 6: Generate Resolve files
+        print("\n🎬 Generating Resolve project files...")
+        self.generate_resolve_files()
+
+        # Step 7: Create/Update Resolve project (if running)
+        print("\n🚀 Creating Resolve project...")
+        if self.create_resolve_project():
+            print("   ✓ Resolve project ready!")
+        else:
+            print("   ⚠️  Resolve not running - project files saved")
+            print("   Run 'sf resolve' when Resolve is open")
+
+        # Step 8: Final summary
+        print(f"\n{'='*60}")
+        print("✅ IMPORT COMPLETE")
+        print(f"{'='*60}")
+        print(f"Project: {self.current_project.name}")
+        print(f"New clips: {len(new_clips)}")
+        print(f"Total clips: {len(all_clips)}")
+
+        total_duration = sum(c.get('duration', 0) for c in all_clips)
+        minutes = int(total_duration // 60)
+        seconds = int(total_duration % 60)
+        print(f"Total duration: {minutes}:{seconds:02d}")
+
+        print(f"\n🎯 Next steps:")
+        print(f"   1. Open DaVinci Resolve")
+        print(f"   2. Your project is ready to edit!")
+        print(f"{'='*60}\n")
+
+        return True
+
+    def find_video_files(self, path: Path) -> List[Path]:
+        """Find all video files in path"""
+        # Use environment variable or defaults for extensions
+        extensions_env = os.getenv("SF_VIDEO_EXTENSIONS", ".mp4,.mov,.avi,.mkv,.mxf")
+        video_extensions = {ext.strip().lower() for ext in extensions_env.split(',')}
+
+        # Ensure all extensions start with dot
+        video_extensions = {ext if ext.startswith('.') else f'.{ext}' for ext in video_extensions}
+
+        video_files = []
+
+        if path.is_file() and path.suffix.lower() in video_extensions:
+            video_files.append(path)
+        elif path.is_dir():
+            for ext in video_extensions:
+                video_files.extend(path.glob(f"**/*{ext}"))
+                video_files.extend(path.glob(f"**/*{ext.upper()}"))
+
+        return sorted(set(video_files))
+
+    def generate_resolve_files(self):
+        """Generate Resolve import files"""
+        try:
+            # Use tool from PATH instead of hardcoded path
+            cmd = [
+                "sf-resolve-project-generator",
+                str(self.current_project.path)
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                print("   ✓ Generated XML/EDL files")
+                return True
+            else:
+                print(f"   ⚠️  Error generating files")
+                return False
+        except Exception as e:
+            print(f"   ⚠️  Error: {e}")
+            return False
+
+    def create_resolve_project(self):
+        """Create Resolve project if Resolve is running"""
+        try:
+            # Check if Resolve is running
+            result = subprocess.run(['pgrep', 'resolve'], capture_output=True)
+            if result.returncode != 0:
+                return False  # Resolve not running
+
+            # Call sf-resolve to create project
+            cmd = ["sf-resolve", "create", str(self.current_project.path)]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+
+            if result.returncode == 0:
+                JsonEvent.success("Resolve project created")
+                return True
+            else:
+                return False
+        except Exception as e:
+            JsonEvent.error(f"Failed to create Resolve project: {e}")
+            return False
+
+    def _analyze_clip(self, video_file: Path) -> Dict[str, Any]:
+        """Analyze a video clip using ffprobe"""
+        try:
+            # Use ffprobe to get video info
+            cmd = [
+                'ffprobe',
+                '-v', 'quiet',
+                '-print_format', 'json',
+                '-show_format',
+                '-show_streams',
+                str(video_file)
+            ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                return {'error': 'ffprobe failed', 'filename': video_file.name}
+
+            data = json.loads(result.stdout)
+
+            # Extract basic info
+            format_info = data.get('format', {})
+            duration = float(format_info.get('duration', 0))
+
+            # Simple categorization based on duration
+            if duration < 10:
+                category = 'short'
+            elif duration < 60:
+                category = 'medium'
+            else:
+                category = 'long'
+
+            return {
+                'filename': video_file.name,
+                'path': str(video_file),
+                'duration': duration,
+                'size': format_info.get('size', 0),
+                'category': category,
+                'format': format_info.get('format_name', 'unknown')
+            }
+
+        except Exception as e:
+            return {'error': str(e), 'filename': video_file.name}
+
+def main():
+    """Main entry point"""
+    try:
+        if len(sys.argv) < 2:
+            print("Usage: sf-orchestrator <import_path>")
+            print("This is typically called by cf-card-import")
+            sys.exit(1)
+
+        import_path = Path(sys.argv[1])
+        if not import_path.exists():
+            print(f"Error: Path not found: {import_path}")
+            sys.exit(1)
+
+        orchestrator = StudioFlowOrchestrator()
+        success = orchestrator.process_import(import_path)
+
+        sys.exit(0 if success else 1)
+    except KeyboardInterrupt:
+        print("\n⚠️  Import cancelled by user")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n❌ Fatal error during import: {e}")
+        print("Please check your StudioFlow configuration")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

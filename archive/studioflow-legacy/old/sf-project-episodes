@@ -1,0 +1,503 @@
+#!/usr/bin/env python3
+"""
+sf-project - StudioFlow project generator with episode support
+Create and manage video production projects with series/episode naming
+"""
+
+import sys
+import re
+import argparse
+import subprocess
+from pathlib import Path
+from datetime import datetime
+import shutil
+import json
+
+# Import shared core
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import (
+    Project, JsonStream, TEMPLATES, STORAGE_TIERS,
+    list_projects, CliHelper
+)
+
+def sanitize_name_strict(name: str) -> str:
+    """
+    Clean project name to follow strict convention:
+    - Replace spaces with underscores
+    - Remove special characters
+    - Title case each word
+    - Ensure valid filesystem name
+    """
+    # Replace common separators with underscores
+    clean = name.replace(" ", "_").replace("-", "_").replace(".", "_")
+
+    # Remove invalid characters (keep only alphanumeric and underscore)
+    clean = "".join(c for c in clean if c.isalnum() or c == "_")
+
+    # Remove multiple underscores
+    while "__" in clean:
+        clean = clean.replace("__", "_")
+
+    # Strip underscores from ends
+    clean = clean.strip("_")
+
+    # Title case each word (optional but looks professional)
+    parts = clean.split("_")
+    clean = "_".join(word.capitalize() for word in parts if word)
+
+    return clean
+
+def get_next_episode_number(series_name: str) -> int:
+    """Find highest episode number for a series and increment"""
+    projects_dir = Path("/mnt/studio/Projects")
+    clean_series = sanitize_name_strict(series_name)
+
+    # Pattern for episode detection: YYYYMMDD_Series_Name_E##
+    pattern = re.compile(rf"\d{{8}}_{re.escape(clean_series)}_E(\d{{2,3}})")
+
+    max_episode = 0
+    for project in projects_dir.iterdir():
+        if project.is_dir():
+            match = pattern.match(project.name)
+            if match:
+                episode_num = int(match.group(1))
+                max_episode = max(max_episode, episode_num)
+
+    return max_episode + 1
+
+def detect_series(project_name: str) -> tuple:
+    """Extract series and episode info from project name"""
+    # Pattern: YYYYMMDD_Series_Name_E##
+    pattern1 = re.compile(r"^\d{8}_(.+)_E(\d{2,3})$")
+    # Pattern: YYYYMMDD_Series_Name_S##E##
+    pattern2 = re.compile(r"^\d{8}_(.+)_S(\d{2})E(\d{2,3})$")
+
+    if match := pattern1.match(project_name):
+        return match.group(1), int(match.group(2)), None
+    elif match := pattern2.match(project_name):
+        return match.group(1), int(match.group(4)), int(match.group(2))
+    else:
+        return None, None, None
+
+def get_series_projects(series_name: str) -> list:
+    """Get all projects in a series, sorted by episode"""
+    projects_dir = Path("/mnt/studio/Projects")
+    clean_series = sanitize_name_strict(series_name)
+
+    series_projects = []
+    for project in projects_dir.iterdir():
+        if project.is_dir():
+            series, episode, season = detect_series(project.name)
+            if series == clean_series:
+                series_projects.append({
+                    "path": project,
+                    "name": project.name,
+                    "series": series,
+                    "episode": episode,
+                    "season": season
+                })
+
+    # Sort by season then episode
+    series_projects.sort(key=lambda x: (x.get("season") or 0, x.get("episode") or 0))
+    return series_projects
+
+def create_project(name: str, template: str = "youtube", options: dict = None):
+    """Create a new project with series/episode support"""
+    options = options or {}
+
+    # Determine project type and name
+    if options.get("series") or options.get("episode"):
+        # This is a series episode
+        clean_series = sanitize_name_strict(name)
+
+        # Get episode number
+        if options.get("auto_increment"):
+            episode_num = get_next_episode_number(clean_series)
+        elif options.get("episode"):
+            episode_num = int(options["episode"])
+        else:
+            episode_num = get_next_episode_number(clean_series)
+
+        # Format episode number with zero padding
+        if episode_num > 99:
+            episode_str = f"E{episode_num:03d}"
+        else:
+            episode_str = f"E{episode_num:02d}"
+
+        # Add season if specified
+        if options.get("season"):
+            season_num = int(options["season"])
+            episode_str = f"S{season_num:02d}{episode_str}"
+
+        # Build final name
+        final_name = f"{clean_series}_{episode_str}"
+
+        # Show series info
+        print(f"Series: {clean_series}", file=sys.stderr)
+        print(f"Episode: {episode_str}", file=sys.stderr)
+
+    elif options.get("daily"):
+        # Daily show format
+        clean_name = sanitize_name_strict(name)
+        date_suffix = datetime.now().strftime("%m%d")
+        final_name = f"{clean_name}_{date_suffix}"
+
+    elif options.get("weekly"):
+        # Weekly show format
+        clean_name = sanitize_name_strict(name)
+        week_num = datetime.now().isocalendar()[1]
+        final_name = f"{clean_name}_Week{week_num:02d}"
+
+    else:
+        # Standalone video
+        final_name = sanitize_name_strict(name)
+
+    # Get date prefix
+    if options.get("date"):
+        if not re.match(r"^\d{8}$", options["date"]):
+            JsonStream.error(f"Invalid date format: {options['date']}. Use YYYYMMDD")
+        timestamp = options["date"]
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d")
+
+    # Build full project name
+    project_name = f"{timestamp}_{final_name}"
+    project_path = Path("/mnt/studio/Projects") / project_name
+
+    print(f"Creating project: {project_name}", file=sys.stderr)
+
+    # Check if exists
+    if project_path.exists():
+        JsonStream.error(f"Project already exists: {project_name}")
+
+    # Create project directory
+    project_path.mkdir(parents=True)
+
+    # Create structure from template
+    template_def = TEMPLATES.get(template, TEMPLATES["minimal"])
+    for dir_path in template_def["dirs"]:
+        (project_path / dir_path).mkdir(parents=True, exist_ok=True)
+
+    # Create project object
+    project = Project(project_path)
+
+    # Build manifest with episode info
+    manifest = {
+        "name": name,
+        "created": datetime.now().isoformat(),
+        "template": template,
+        "status": "active",
+        "naming_convention": "strict",
+        "options": options
+    }
+
+    # Add series metadata if applicable
+    if options.get("series") or options.get("episode"):
+        series_info = {
+            "series_name": clean_series,
+            "episode_number": episode_num,
+            "episode_code": episode_str
+        }
+        if options.get("season"):
+            series_info["season"] = int(options["season"])
+
+        manifest["series"] = series_info
+
+        # Check for series metadata file
+        series_meta_file = Path("/mnt/studio/Projects/.series") / f"{clean_series}.json"
+        if series_meta_file.exists():
+            with open(series_meta_file) as f:
+                series_meta = json.load(f)
+                manifest["series_metadata"] = series_meta
+
+    project.save_manifest(manifest)
+
+    # Create README with episode info
+    readme_content = f"""# {name}
+
+Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Template: {template}
+Project ID: {project_name}
+"""
+
+    if options.get("series") or options.get("episode"):
+        readme_content += f"""
+## Series Information
+- Series: {clean_series}
+- Episode: {episode_str}
+- Episode Number: {episode_num}
+"""
+
+        # List other episodes
+        other_episodes = get_series_projects(clean_series)
+        if other_episodes:
+            readme_content += "\n### Other Episodes in Series:\n"
+            for ep in other_episodes:
+                if ep["name"] != project_name:
+                    readme_content += f"- {ep['name']}\n"
+
+    readme_content += """
+## Quick Start
+
+1. Import footage to `01_FOOTAGE/`
+2. Open project in DaVinci Resolve
+3. Edit timeline in `04_EDIT/TIMELINE/`
+4. Export to `05_EXPORT/FINAL/`
+
+## Notes
+
+## Tasks
+- [ ] Import footage
+- [ ] Create rough cut
+- [ ] Color grade
+- [ ] Audio mix
+- [ ] Export final
+"""
+
+    readme = project_path / "README.md"
+    readme.write_text(readme_content)
+
+    # Initialize git if requested
+    if options.get("git", True):
+        try:
+            subprocess.run(["git", "init"], cwd=project_path, capture_output=True, check=True)
+
+            # Create .gitignore
+            gitignore = project_path / ".gitignore"
+            gitignore.write_text("""# StudioFlow defaults
+*.cache
+*_cache/
+CACHE/
+*.tmp
+.DS_Store
+
+# Video files (too large for git)
+*.mov
+*.mp4
+*.mkv
+*.avi
+*.mxf
+*.r3d
+
+# Audio files (usually large)
+*.wav
+*.aif
+*.aiff
+
+# DaVinci Resolve
+*.drp
+*.drb
+CacheClip/
+ProxyMedia/
+OptimizedMedia/
+""")
+
+            subprocess.run(["git", "add", "."], cwd=project_path, capture_output=True)
+            subprocess.run(
+                ["git", "commit", "-m", f"Initial project: {final_name}"],
+                cwd=project_path,
+                capture_output=True
+            )
+        except:
+            pass  # Git is optional
+
+    # Create DaVinci Resolve project file placeholder
+    (project_path / f"{project_name}.drp").touch()
+
+    # Create Current symlink if requested
+    if options.get("current"):
+        current_dir = Path("/mnt/studio/Projects/Current")
+        current_dir.mkdir(exist_ok=True)
+        symlink_name = clean_series if (options.get("series") or options.get("episode")) else final_name
+        symlink_path = current_dir / symlink_name
+        if symlink_path.exists():
+            symlink_path.unlink()
+        symlink_path.symlink_to(project_path)
+
+    # Emit success event
+    event_data = {"template": template}
+    if options.get("series") or options.get("episode"):
+        event_data["series"] = clean_series
+        event_data["episode"] = episode_num
+
+    project.emit_event("created", event_data)
+
+    # Return success with extra info
+    response_data = {
+        "path": str(project_path),
+        "name": project_name,
+        "type": "series" if (options.get("series") or options.get("episode")) else "standalone"
+    }
+
+    if options.get("series") or options.get("episode"):
+        response_data["series"] = clean_series
+        response_data["episode"] = episode_num
+        response_data["episode_code"] = episode_str
+
+    JsonStream.success(f"Created project: {project_name}", response_data)
+
+def list_series():
+    """List all series with episode counts"""
+    projects_dir = Path("/mnt/studio/Projects")
+
+    series_map = {}
+    for project in projects_dir.iterdir():
+        if project.is_dir():
+            series, episode, season = detect_series(project.name)
+            if series:
+                if series not in series_map:
+                    series_map[series] = {
+                        "name": series,
+                        "episodes": [],
+                        "count": 0,
+                        "latest": None
+                    }
+
+                series_map[series]["episodes"].append({
+                    "name": project.name,
+                    "episode": episode,
+                    "season": season
+                })
+                series_map[series]["count"] += 1
+
+                # Track latest episode
+                if not series_map[series]["latest"] or episode > series_map[series]["latest"]["episode"]:
+                    series_map[series]["latest"] = {
+                        "name": project.name,
+                        "episode": episode
+                    }
+
+    # Convert to list and sort
+    series_list = list(series_map.values())
+    series_list.sort(key=lambda x: x["name"])
+
+    JsonStream.emit({
+        "series": series_list,
+        "count": len(series_list)
+    })
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='StudioFlow project management with episode support',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Create standalone video
+  sf-project create "iPhone Review" --template youtube
+
+  # Create series episode (auto-increment)
+  sf-project create "Python Tutorial" --series
+
+  # Create specific episode
+  sf-project create "Python Tutorial" --episode 5
+
+  # Create with season
+  sf-project create "Tech News" --season 2 --episode 1
+
+  # Create daily show
+  sf-project create "Daily Vlog" --daily
+
+  # List all series
+  sf-project list-series
+"""
+    )
+
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+
+    # Create command
+    create_parser = subparsers.add_parser('create', help='Create new project')
+    create_parser.add_argument('name', help='Project/series name')
+    create_parser.add_argument('-t', '--template', default='youtube',
+                              choices=list(TEMPLATES.keys()),
+                              help='Project template')
+
+    # Episode options
+    episode_group = create_parser.add_argument_group('episode options')
+    episode_group.add_argument('--series', action='store_true',
+                              help='Create as series episode (auto-increment)')
+    episode_group.add_argument('--episode', type=int,
+                              help='Specific episode number')
+    episode_group.add_argument('--season', type=int,
+                              help='Season number (for S##E## format)')
+    episode_group.add_argument('--auto-increment', action='store_true',
+                              help='Auto-increment to next episode')
+
+    # Format options
+    format_group = create_parser.add_argument_group('format options')
+    format_group.add_argument('--daily', action='store_true',
+                             help='Daily show format (adds MMDD)')
+    format_group.add_argument('--weekly', action='store_true',
+                             help='Weekly show format (adds Week##)')
+
+    # Other options
+    create_parser.add_argument('--date', help='Override date (YYYYMMDD)')
+    create_parser.add_argument('--no-git', action='store_true',
+                              help='Skip git initialization')
+    create_parser.add_argument('--current', action='store_true',
+                              help='Create symlink in Current directory')
+
+    # List series command
+    series_parser = subparsers.add_parser('list-series',
+                                          help='List all series')
+
+    # List command
+    list_parser = subparsers.add_parser('list', help='List all projects')
+
+    # Cleanup command
+    cleanup_parser = subparsers.add_parser('cleanup',
+                                          help='Rename projects to follow convention')
+    cleanup_parser.add_argument('--dry-run', action='store_true', default=True,
+                               help='Show what would be renamed')
+    cleanup_parser.add_argument('--apply', action='store_true',
+                               help='Actually rename projects')
+
+    # Validate command
+    validate_parser = subparsers.add_parser('validate',
+                                           help='Show how name will be cleaned')
+    validate_parser.add_argument('name', help='Project name to validate')
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    if args.command == 'create':
+        options = {
+            'git': not args.no_git,
+            'current': args.current
+        }
+
+        if args.series:
+            options['series'] = True
+            options['auto_increment'] = True
+        if args.episode:
+            options['episode'] = args.episode
+        if args.season:
+            options['season'] = args.season
+        if args.auto_increment:
+            options['auto_increment'] = True
+        if args.daily:
+            options['daily'] = True
+        if args.weekly:
+            options['weekly'] = True
+        if args.date:
+            options['date'] = args.date
+
+        create_project(args.name, args.template, options)
+
+    elif args.command == 'list-series':
+        list_series()
+
+    elif args.command == 'list':
+        projects = list_projects()
+        JsonStream.emit({
+            "projects": [p.name for p in projects],
+            "count": len(projects)
+        })
+
+    else:
+        JsonStream.error(f"Command not implemented: {args.command}")
+
+if __name__ == '__main__':
+    main()

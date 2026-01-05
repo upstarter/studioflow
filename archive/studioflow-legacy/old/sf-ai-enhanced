@@ -1,0 +1,467 @@
+#!/usr/bin/env python3
+"""
+sf-ai-enhanced - AI integration with real hook generation
+Generates actual content using context and formulas
+"""
+
+import sys
+import json
+import yaml
+import argparse
+from pathlib import Path
+from datetime import datetime
+import random
+
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import Project, JsonStream, find_project, CliHelper
+
+class HookGenerator:
+    """Generate multiple hook options using proven formulas"""
+
+    HOOK_FORMULAS = {
+        "problem_agitation": {
+            "template": "You know that feeling when {pain_point}? {agitation}? {solution_tease}",
+            "energy": "high",
+            "best_for": ["tutorial", "how-to"],
+            "duration": 8
+        },
+
+        "shocking_statistic": {
+            "template": "{percentage}% of {audience} {problem_statement}. {solution_tease}",
+            "energy": "medium",
+            "best_for": ["educational", "comparison"],
+            "duration": 7
+        },
+
+        "mistake_callout": {
+            "template": "Stop! {common_mistake}. {better_way}",
+            "energy": "high",
+            "best_for": ["tutorial", "tips"],
+            "duration": 6
+        },
+
+        "question_hook": {
+            "template": "{thought_provoking_question}? {surprising_reveal}",
+            "energy": "medium",
+            "best_for": ["educational", "explainer"],
+            "duration": 6
+        },
+
+        "promise": {
+            "template": "In the next {time}, I'll {specific_promise}",
+            "energy": "medium",
+            "best_for": ["tutorial", "guide"],
+            "duration": 5
+        },
+
+        "story": {
+            "template": "{relatable_scenario}. {turning_point}. {result}",
+            "energy": "low",
+            "best_for": ["case-study", "personal"],
+            "duration": 10
+        },
+
+        "controversy": {
+            "template": "{controversial_statement}. {challenge_belief}",
+            "energy": "high",
+            "best_for": ["opinion", "debate"],
+            "duration": 6
+        },
+
+        "comparison": {
+            "template": "{option_a} vs {option_b}? {unexpected_winner}",
+            "energy": "medium",
+            "best_for": ["review", "comparison"],
+            "duration": 7
+        }
+    }
+
+    def __init__(self, context_file=None):
+        self.context = {}
+        if context_file and Path(context_file).exists():
+            with open(context_file, 'r') as f:
+                self.context = yaml.safe_load(f)
+
+    def generate_hooks(self, title, count=5, video_type="tutorial"):
+        """Generate multiple hook options based on context"""
+        hooks = []
+
+        # Get relevant formulas for video type
+        relevant_formulas = [
+            (name, formula) for name, formula in self.HOOK_FORMULAS.items()
+            if video_type in formula.get("best_for", [])
+        ]
+
+        # If no relevant formulas, use all
+        if not relevant_formulas:
+            relevant_formulas = list(self.HOOK_FORMULAS.items())
+
+        # Generate hooks
+        for i in range(count):
+            formula_name, formula = random.choice(relevant_formulas)
+            hook = self.create_hook(title, formula_name, formula)
+            hooks.append(hook)
+
+        # Sort by predicted effectiveness
+        hooks.sort(key=lambda x: x.get("predicted_retention", 0), reverse=True)
+
+        return hooks
+
+    def create_hook(self, title, formula_name, formula):
+        """Create a specific hook using a formula and context"""
+        # Extract context elements
+        audience = self.context.get("video", {}).get("audience", {})
+        transformation = self.context.get("video", {}).get("transformation", {})
+
+        # Generate hook based on formula
+        if formula_name == "problem_agitation":
+            pain_point = audience.get("problem", "doing things the hard way")
+            script = f"You know that feeling when you {pain_point}? " \
+                    f"And then you have to do it again and again? " \
+                    f"Well, that ends today."
+
+        elif formula_name == "shocking_statistic":
+            percentage = random.choice([73, 81, 87, 92, 96])
+            aud = audience.get("level", "developers")
+            problem = audience.get("problem", "struggle with this")
+            script = f"{percentage}% of {aud} {problem}. " \
+                    f"But there's a simple solution they're missing."
+
+        elif formula_name == "mistake_callout":
+            mistake = transformation.get("from", "the old way")
+            better = transformation.get("to", "the better way")
+            script = f"Stop {mistake}! " \
+                    f"Here's {better} that actually works."
+
+        elif formula_name == "question_hook":
+            script = f"Why do professionals {transformation.get('to', 'do it differently')}? " \
+                    f"The answer will surprise you."
+
+        elif formula_name == "promise":
+            duration = self.context.get("video", {}).get("specs", {}).get("duration", "10 minutes")
+            promise = transformation.get("to", "master this concept")
+            script = f"In the next {duration}, I'll show you exactly how to {promise}."
+
+        elif formula_name == "story":
+            before = transformation.get("from", "struggling")
+            after = transformation.get("to", "succeeding")
+            script = f"Last week I was {before}. " \
+                    f"Then I discovered something. " \
+                    f"Now I'm {after}, and you can too."
+
+        elif formula_name == "controversy":
+            script = f"Everyone's teaching {title} wrong. " \
+                    f"Here's what actually works in 2025."
+
+        else:  # comparison
+            script = f"Old way vs new way of {title}? " \
+                    f"The winner isn't what you think."
+
+        # Calculate predicted retention based on formula performance
+        base_retention = {
+            "problem_agitation": 75,
+            "shocking_statistic": 82,
+            "mistake_callout": 70,
+            "question_hook": 73,
+            "promise": 68,
+            "story": 65,
+            "controversy": 78,
+            "comparison": 71
+        }
+
+        return {
+            "type": formula_name,
+            "script": script,
+            "duration": formula["duration"],
+            "energy": formula["energy"],
+            "predicted_retention": base_retention.get(formula_name, 70) + random.randint(-5, 5),
+            "best_for": formula["best_for"]
+        }
+
+class ThumbnailGenerator:
+    """Generate thumbnail suggestions based on video context"""
+
+    THUMBNAIL_STYLES = {
+        "high_contrast": {
+            "background": "bright_gradient",
+            "text_color": "yellow_white",
+            "face_size": "large"
+        },
+        "minimal": {
+            "background": "blurred_content",
+            "text_color": "white",
+            "face_size": "medium"
+        },
+        "data_driven": {
+            "background": "graph_chart",
+            "text_color": "contrasting",
+            "face_size": "small"
+        }
+    }
+
+    EMOTION_PROMPTS = {
+        "surprised": "😲 React like you just discovered something incredible",
+        "confused": "🤔 Look puzzled like something doesn't make sense",
+        "excited": "😃 Show enthusiasm like you solved a big problem",
+        "mind_blown": "🤯 Express that your mind is completely blown",
+        "confident": "😎 Look like you know a secret others don't",
+        "frustrated": "😤 Show frustration with the old way of doing things",
+        "thinking": "🧐 Deep in thought, considering something important"
+    }
+
+    def generate_thumbnail_plan(self, title, video_type="tutorial"):
+        """Generate a complete thumbnail plan"""
+
+        # Select emotions based on video type
+        if video_type == "tutorial":
+            emotions = ["surprised", "confused", "excited"]
+        elif video_type == "review":
+            emotions = ["thinking", "confident", "surprised"]
+        else:
+            emotions = ["excited", "mind_blown", "confident"]
+
+        # Generate text options
+        text_options = self.generate_text_overlays(title)
+
+        return {
+            "emotions": {
+                emotion: self.EMOTION_PROMPTS[emotion]
+                for emotion in emotions
+            },
+            "text_options": text_options,
+            "style": self.select_style(video_type),
+            "composition": self.generate_composition(video_type)
+        }
+
+    def generate_text_overlays(self, title):
+        """Generate multiple text overlay options"""
+
+        # Extract key words from title
+        key_words = [word for word in title.split()
+                    if word.upper() not in ["THE", "A", "AN", "IN", "OF", "FOR"]]
+
+        main_word = key_words[0].upper() if key_words else "REVEALED"
+
+        options = [
+            {"main": main_word, "sub": "in 3 minutes"},
+            {"main": "STOP!", "sub": f"Wrong way to {main_word.lower()}"},
+            {"main": "87% WRONG", "sub": ""},
+            {"main": f"{main_word}", "sub": "FINALLY EXPLAINED"},
+            {"main": "THE TRICK", "sub": f"to {main_word.lower()}"}
+        ]
+
+        return options
+
+    def select_style(self, video_type):
+        """Select thumbnail style based on video type"""
+        if video_type in ["tutorial", "how-to"]:
+            return self.THUMBNAIL_STYLES["high_contrast"]
+        elif video_type in ["review", "comparison"]:
+            return self.THUMBNAIL_STYLES["data_driven"]
+        else:
+            return self.THUMBNAIL_STYLES["minimal"]
+
+    def generate_composition(self, video_type):
+        """Generate composition guidelines"""
+        return {
+            "face_position": "left_third",
+            "text_position": "right_two_thirds",
+            "background_blur": 80,
+            "props": ["arrow", "circle_highlight"],
+            "brand_element": "bottom_right"
+        }
+
+class ContentAnalyzer:
+    """Analyze competitor content and testing results"""
+
+    def analyze_test_results(self, test_data):
+        """Analyze hook test results and recommend winner"""
+
+        # Sort by retention
+        sorted_hooks = sorted(
+            test_data["hooks"],
+            key=lambda x: x.get("retention_15s", 0),
+            reverse=True
+        )
+
+        winner = sorted_hooks[0]
+
+        analysis = {
+            "winner": winner,
+            "reasoning": self.generate_reasoning(winner, sorted_hooks),
+            "insights": self.extract_insights(sorted_hooks),
+            "recommendations": self.generate_recommendations(sorted_hooks)
+        }
+
+        return analysis
+
+    def generate_reasoning(self, winner, all_hooks):
+        """Generate reasoning for why a hook won"""
+        reasons = []
+
+        if winner["retention_15s"] > 80:
+            reasons.append(f"Exceptional retention ({winner['retention_15s']}%)")
+
+        if winner["type"] == "shocking_statistic":
+            reasons.append("Statistics create curiosity gap")
+        elif winner["type"] == "problem_agitation":
+            reasons.append("Strong emotional connection to pain point")
+
+        return " + ".join(reasons)
+
+    def extract_insights(self, hooks):
+        """Extract insights from test results"""
+        insights = []
+
+        # Check which formula types work best
+        avg_by_type = {}
+        for hook in hooks:
+            hook_type = hook["type"]
+            if hook_type not in avg_by_type:
+                avg_by_type[hook_type] = []
+            avg_by_type[hook_type].append(hook.get("retention_15s", 0))
+
+        best_type = max(avg_by_type.items(), key=lambda x: sum(x[1])/len(x[1]))
+        insights.append(f"{best_type[0]} hooks perform best for your audience")
+
+        return insights
+
+    def generate_recommendations(self, hooks):
+        """Generate recommendations for future videos"""
+        recs = []
+
+        winner = hooks[0]
+        if winner["retention_15s"] > 75:
+            recs.append(f"Continue using {winner['type']} hooks")
+
+        if winner["energy"] == "high":
+            recs.append("High energy openings work for your audience")
+
+        return recs
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='StudioFlow AI - Enhanced content generation',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Generate hooks with context
+  sf-ai hooks "Python Tutorial" --context .studioflow/video_context.yaml
+
+  # Generate thumbnail plan
+  sf-ai thumbnail "Python Tutorial" --type tutorial
+
+  # Analyze test results
+  sf-ai analyze-tests results.json
+
+  # Select best hooks
+  sf-ai select-hooks hooks.json --top 3
+"""
+    )
+
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+
+    # Hooks command
+    hooks_parser = subparsers.add_parser('hooks', help='Generate hook options')
+    hooks_parser.add_argument('title', help='Video title')
+    hooks_parser.add_argument('--context', help='Context YAML file')
+    hooks_parser.add_argument('--count', type=int, default=5, help='Number of hooks')
+    hooks_parser.add_argument('--type', default='tutorial',
+                             choices=['tutorial', 'review', 'vlog', 'comparison'])
+
+    # Thumbnail command
+    thumb_parser = subparsers.add_parser('thumbnail', help='Generate thumbnail plan')
+    thumb_parser.add_argument('title', help='Video title')
+    thumb_parser.add_argument('--type', default='tutorial',
+                             choices=['tutorial', 'review', 'vlog', 'comparison'])
+
+    # Analyze command
+    analyze_parser = subparsers.add_parser('analyze-tests',
+                                          help='Analyze test results')
+    analyze_parser.add_argument('results_file', help='Test results JSON file')
+
+    # Select hooks command
+    select_parser = subparsers.add_parser('select-hooks',
+                                         help='Select best hooks')
+    select_parser.add_argument('hooks_file', help='Generated hooks JSON')
+    select_parser.add_argument('--top', type=int, default=3,
+                              help='Number to select')
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    if args.command == 'hooks':
+        generator = HookGenerator(args.context)
+        hooks = generator.generate_hooks(args.title, args.count, args.type)
+
+        output = {
+            "title": args.title,
+            "type": args.type,
+            "generated_at": datetime.now().isoformat(),
+            "hooks": hooks
+        }
+
+        # Save to file
+        output_file = Path("hooks_generated.json")
+        with open(output_file, 'w') as f:
+            json.dump(output, f, indent=2)
+
+        JsonStream.success(f"Generated {len(hooks)} hooks", {
+            "file": str(output_file),
+            "best_hook": hooks[0] if hooks else None
+        })
+
+    elif args.command == 'thumbnail':
+        generator = ThumbnailGenerator()
+        plan = generator.generate_thumbnail_plan(args.title, args.type)
+
+        output = {
+            "title": args.title,
+            "type": args.type,
+            "generated_at": datetime.now().isoformat(),
+            "plan": plan
+        }
+
+        # Save to file
+        output_file = Path("thumbnail_plan.json")
+        with open(output_file, 'w') as f:
+            json.dump(output, f, indent=2)
+
+        JsonStream.success("Generated thumbnail plan", {
+            "file": str(output_file),
+            "emotions": list(plan["emotions"].keys()),
+            "text_options": len(plan["text_options"])
+        })
+
+    elif args.command == 'analyze-tests':
+        with open(args.results_file, 'r') as f:
+            test_data = json.load(f)
+
+        analyzer = ContentAnalyzer()
+        analysis = analyzer.analyze_test_results(test_data)
+
+        JsonStream.success("Analysis complete", analysis)
+
+    elif args.command == 'select-hooks':
+        with open(args.hooks_file, 'r') as f:
+            hooks_data = json.load(f)
+
+        # Select top hooks
+        selected = hooks_data["hooks"][:args.top]
+
+        output = {
+            "selected": selected,
+            "count": len(selected),
+            "file": "selected_hooks.json"
+        }
+
+        with open("selected_hooks.json", 'w') as f:
+            json.dump(output, f, indent=2)
+
+        JsonStream.success(f"Selected top {len(selected)} hooks", output)
+
+if __name__ == '__main__':
+    main()

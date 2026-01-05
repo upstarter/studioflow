@@ -1,0 +1,485 @@
+#!/usr/bin/env python3
+"""
+sf-obs - StudioFlow OBS automation
+Smart recording with hooks, thumbnails, and shorts marking
+"""
+
+import sys
+import json
+import argparse
+import time
+import subprocess
+from pathlib import Path
+from datetime import datetime
+import threading
+
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import Project, JsonStream, find_project, CliHelper, STORAGE_TIERS
+from obscore import OBSController
+
+class SmartRecorder:
+    """Intelligent recording system with multiple takes and markers"""
+
+    def __init__(self):
+        self.obs = OBSController()
+        self.current_project = None
+        self.current_take = 1
+        self.markers = []
+        self.thumbnail_count = 0
+
+    def connect(self):
+        """Connect to OBS"""
+        if not self.obs.connect():
+            JsonStream.error("Failed to connect to OBS. Is it running?")
+        JsonStream.success("Connected to OBS")
+        return True
+
+    def setup_project_recording(self, project_name):
+        """Setup recording for a StudioFlow project"""
+        # Find project
+        project = find_project(project_name)
+        if not project:
+            JsonStream.error(f"Project not found: {project_name}")
+
+        self.current_project = project
+
+        # Create recording directory
+        recording_dir = project.path / "01_FOOTAGE" / "RAW"
+        recording_dir.mkdir(parents=True, exist_ok=True)
+
+        # Set OBS recording path
+        # Note: This requires OBS WebSocket 5.0+ and proper permissions
+        # For now, we'll track where files should be moved
+
+        return project
+
+    def record_with_hooks(self, project_name, hook_count=3):
+        """Record multiple hook variations"""
+        project = self.setup_project_recording(project_name)
+
+        hooks_recorded = []
+
+        for i in range(hook_count):
+            hook_name = f"Hook_{chr(65+i)}"  # Hook_A, Hook_B, Hook_C
+
+            JsonStream.emit({
+                "event": "recording_hook",
+                "hook": hook_name,
+                "number": i + 1,
+                "total": hook_count
+            })
+
+            # Countdown
+            self.countdown(3)
+
+            # Start recording
+            self.obs.start_recording()
+            self.obs.recording_project = f"{project.name}_{hook_name}"
+
+            # Show prompt
+            print(f"\n🔴 Recording {hook_name} - Press Enter when done...", file=sys.stderr)
+            input()
+
+            # Stop recording
+            output_path = self.obs.stop_recording()
+
+            hooks_recorded.append({
+                "hook": hook_name,
+                "duration": (datetime.now() - self.obs.recording_start_time).total_seconds() if self.obs.recording_start_time else 0,
+                "output": output_path
+            })
+
+            # Save markers for this take
+            if self.obs.recording_markers:
+                self.obs.save_markers(project.path / "01_FOOTAGE" / f"{hook_name}_markers.json")
+                self.obs.recording_markers = []
+
+            # Brief pause between takes
+            if i < hook_count - 1:
+                print("\nPreparing next hook...", file=sys.stderr)
+                time.sleep(2)
+
+        JsonStream.success(f"Recorded {hook_count} hooks", {
+            "hooks": hooks_recorded,
+            "project": project.name
+        })
+
+    def record_smart(self, project_name, take_number=None):
+        """Smart recording with markers and project integration"""
+        project = self.setup_project_recording(project_name)
+
+        # Determine take number
+        if not take_number:
+            take_number = self.detect_next_take(project)
+
+        recording_name = f"{project.name}_Take{take_number:02d}"
+
+        JsonStream.emit({
+            "event": "recording_start",
+            "project": project.name,
+            "take": take_number
+        })
+
+        # Setup marker listener in background
+        self.setup_marker_listener()
+
+        # Countdown
+        self.countdown(3)
+
+        # Start recording
+        self.obs.start_recording()
+        self.obs.recording_project = recording_name
+
+        print("\n🔴 RECORDING - Take " + str(take_number), file=sys.stderr)
+        print("Hotkeys:", file=sys.stderr)
+        print("  [G] = Good take", file=sys.stderr)
+        print("  [B] = Bad/blooper", file=sys.stderr)
+        print("  [S] = Short/clip moment", file=sys.stderr)
+        print("  [T] = Thumbnail expression", file=sys.stderr)
+        print("  [Enter] = Stop recording", file=sys.stderr)
+        print("-" * 40, file=sys.stderr)
+
+        # Wait for stop
+        input()
+
+        # Stop recording
+        output_path = self.obs.stop_recording()
+
+        # Save markers
+        markers_file = None
+        if self.obs.recording_markers:
+            markers_file = project.path / "01_FOOTAGE" / f"Take{take_number:02d}_markers.json"
+            self.obs.save_markers(markers_file)
+
+        JsonStream.success(f"Recording complete: Take {take_number}", {
+            "take": take_number,
+            "output": output_path,
+            "markers": len(self.obs.recording_markers),
+            "markers_file": str(markers_file) if markers_file else None
+        })
+
+        self.current_take = take_number + 1
+
+    def detect_next_take(self, project):
+        """Detect the next take number for a project"""
+        footage_dir = project.path / "01_FOOTAGE" / "RAW"
+        if not footage_dir.exists():
+            return 1
+
+        existing_takes = []
+        for file in footage_dir.glob("*Take*.mkv"):
+            try:
+                # Extract take number from filename
+                take_str = file.stem.split("Take")[-1].split("_")[0]
+                existing_takes.append(int(take_str))
+            except:
+                pass
+
+        return max(existing_takes) + 1 if existing_takes else 1
+
+    def setup_marker_listener(self):
+        """Setup background thread to listen for marker hotkeys"""
+        # This is a simplified version - in production you'd use proper hotkey library
+
+        def listen_for_markers():
+            # This would ideally use a proper hotkey library
+            # For now, markers are added via the command interface
+            pass
+
+        # Start listener thread
+        thread = threading.Thread(target=listen_for_markers, daemon=True)
+        thread.start()
+
+    def countdown(self, seconds=3):
+        """Show countdown before recording"""
+        for i in range(seconds, 0, -1):
+            print(f"\rStarting in {i}...", end="", file=sys.stderr)
+            time.sleep(1)
+        print("\r" + " " * 20 + "\r", end="", file=sys.stderr)
+
+
+class SceneTemplateManager:
+    """Manage scene templates for different content types"""
+
+    def __init__(self, obs_controller):
+        self.obs = obs_controller
+        self.templates = {
+            'tutorial': [
+                'Hook',
+                'Intro',
+                'Main_Content',
+                'Screen_Share',
+                'Thumbnail_Shot',
+                'Outro'
+            ],
+            'talking': [
+                'Hook',
+                'Intro',
+                'Face_Main',
+                'Thumbnail_Shot',
+                'Outro'
+            ],
+            'review': [
+                'Hook',
+                'Intro',
+                'Product_Wide',
+                'Product_Close',
+                'Comparison',
+                'Thumbnail_Shot',
+                'Outro'
+            ]
+        }
+
+    def setup_template(self, template_name='tutorial'):
+        """Setup scenes from template"""
+        if template_name not in self.templates:
+            JsonStream.error(f"Unknown template: {template_name}")
+
+        scenes_to_create = self.templates[template_name]
+        created = []
+        existing = []
+
+        current_scenes = self.obs.get_scenes()
+
+        for scene_name in scenes_to_create:
+            if scene_name in current_scenes:
+                existing.append(scene_name)
+            else:
+                if self.obs.create_scene(scene_name):
+                    created.append(scene_name)
+
+        # Switch to first scene
+        if scenes_to_create:
+            self.obs.switch_scene(scenes_to_create[0])
+
+        JsonStream.success(f"Template '{template_name}' ready", {
+            "template": template_name,
+            "created": created,
+            "existing": existing,
+            "total_scenes": len(scenes_to_create)
+        })
+
+    def quick_switch(self, scene_identifier):
+        """Quick switch by number or name"""
+        try:
+            # If number, use as index
+            scene_num = int(scene_identifier)
+            scenes = self.obs.get_scenes()
+            if 0 <= scene_num - 1 < len(scenes):
+                scene_name = scenes[scene_num - 1]
+                self.obs.switch_scene(scene_name)
+                JsonStream.success(f"Switched to scene {scene_num}: {scene_name}")
+            else:
+                JsonStream.error(f"Scene number {scene_num} out of range")
+        except ValueError:
+            # Use as name
+            if self.obs.switch_scene(scene_identifier):
+                JsonStream.success(f"Switched to scene: {scene_identifier}")
+            else:
+                JsonStream.error(f"Scene not found: {scene_identifier}")
+
+
+class ThumbnailCapture:
+    """Automatic thumbnail expression capture"""
+
+    def __init__(self, obs_controller):
+        self.obs = obs_controller
+        self.capture_count = 0
+        self.thumbnail_scene = "Thumbnail_Shot"
+
+    def enter_thumbnail_mode(self):
+        """Switch to thumbnail capture scene"""
+        # First, check if thumbnail scene exists
+        if self.thumbnail_scene not in self.obs.get_scenes():
+            self.obs.create_scene(self.thumbnail_scene)
+
+        self.obs.switch_scene(self.thumbnail_scene)
+
+        JsonStream.emit({
+            "event": "thumbnail_mode_activated",
+            "instructions": "Make different expressions for thumbnails",
+            "tip": "Try: surprised, excited, confused, thinking, happy"
+        })
+
+        # In a real implementation, this would trigger screenshot captures
+        # when detecting face changes or on timer
+
+    def capture_expression(self):
+        """Capture current frame as thumbnail candidate"""
+        self.capture_count += 1
+
+        # This would trigger OBS screenshot
+        # For now, we'll mark it
+        marker = self.obs.add_marker('thumbnail', f'Expression {self.capture_count}')
+
+        JsonStream.emit({
+            "event": "thumbnail_captured",
+            "number": self.capture_count,
+            "timestamp": marker['time'] if marker else None
+        })
+
+        return self.capture_count
+
+
+class ShortsMarker:
+    """Mark moments for shorts during recording"""
+
+    def __init__(self, obs_controller):
+        self.obs = obs_controller
+        self.shorts_markers = []
+
+    def mark_short(self, description=""):
+        """Mark current moment as good for short"""
+        if not self.obs.state['recording']:
+            JsonStream.error("Not recording")
+            return
+
+        marker = self.obs.add_marker('short', description)
+        self.shorts_markers.append(marker)
+
+        JsonStream.emit({
+            "event": "short_marked",
+            "count": len(self.shorts_markers),
+            "timestamp": marker['time'] if marker else None
+        })
+
+        return marker
+
+    def export_shorts_list(self, project_path):
+        """Export list of shorts markers for editing"""
+        if not self.shorts_markers:
+            return None
+
+        shorts_file = project_path / "01_FOOTAGE" / "shorts_markers.json"
+        with open(shorts_file, 'w') as f:
+            json.dump({
+                "shorts": self.shorts_markers,
+                "count": len(self.shorts_markers),
+                "export_time": datetime.now().isoformat()
+            }, f, indent=2)
+
+        return shorts_file
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='StudioFlow OBS automation - Smart recording and scene management',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Record with multiple hooks
+  sf-obs record "Python Tutorial" --hooks 3
+
+  # Smart recording with markers
+  sf-obs record "Review Video"
+
+  # Setup scene template
+  sf-obs setup tutorial
+  sf-obs setup review
+
+  # Quick scene switching
+  sf-obs switch 1           # Switch to first scene
+  sf-obs switch Main_Content  # Switch by name
+
+  # Thumbnail mode
+  sf-obs thumbnail
+
+  # Mark short moment
+  sf-obs mark-short "Funny reaction"
+
+  # Show OBS status
+  sf-obs status
+"""
+    )
+
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+
+    # Record command
+    record_parser = subparsers.add_parser('record', help='Smart recording')
+    record_parser.add_argument('project', help='Project name')
+    record_parser.add_argument('--hooks', type=int, help='Record multiple hooks')
+    record_parser.add_argument('--take', type=int, help='Specific take number')
+
+    # Setup command
+    setup_parser = subparsers.add_parser('setup', help='Setup scene template')
+    setup_parser.add_argument('template', choices=['tutorial', 'talking', 'review'],
+                            help='Template type')
+
+    # Switch command
+    switch_parser = subparsers.add_parser('switch', help='Quick scene switch')
+    switch_parser.add_argument('scene', help='Scene number or name')
+
+    # Thumbnail command
+    thumb_parser = subparsers.add_parser('thumbnail', help='Enter thumbnail mode')
+
+    # Mark short command
+    short_parser = subparsers.add_parser('mark-short', help='Mark moment for short')
+    short_parser.add_argument('description', nargs='?', default='',
+                             help='Description of moment')
+
+    # Status command
+    status_parser = subparsers.add_parser('status', help='Show OBS status')
+
+    # List scenes command
+    list_parser = subparsers.add_parser('list', help='List available scenes')
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    # Initialize controllers
+    recorder = SmartRecorder()
+
+    # Connect to OBS
+    if not recorder.connect():
+        sys.exit(1)
+
+    template_manager = SceneTemplateManager(recorder.obs)
+    thumbnail = ThumbnailCapture(recorder.obs)
+    shorts = ShortsMarker(recorder.obs)
+
+    # Execute command
+    if args.command == 'record':
+        if args.hooks:
+            recorder.record_with_hooks(args.project, args.hooks)
+        else:
+            recorder.record_smart(args.project, args.take)
+
+    elif args.command == 'setup':
+        template_manager.setup_template(args.template)
+
+    elif args.command == 'switch':
+        template_manager.quick_switch(args.scene)
+
+    elif args.command == 'thumbnail':
+        thumbnail.enter_thumbnail_mode()
+
+    elif args.command == 'mark-short':
+        shorts.mark_short(args.description)
+
+    elif args.command == 'status':
+        recorder.obs.refresh_state()
+        JsonStream.emit({
+            "connected": recorder.obs.connected,
+            "recording": recorder.obs.state['recording'],
+            "streaming": recorder.obs.state['streaming'],
+            "current_scene": recorder.obs.state['current_scene'],
+            "scene_count": len(recorder.obs.state['scenes']),
+            "performance": recorder.obs.state['stats']
+        })
+
+    elif args.command == 'list':
+        scenes = recorder.obs.get_scenes()
+        JsonStream.emit({
+            "scenes": scenes,
+            "current": recorder.obs.state['current_scene'],
+            "count": len(scenes)
+        })
+
+    # Disconnect
+    recorder.obs.disconnect()
+
+if __name__ == '__main__':
+    main()

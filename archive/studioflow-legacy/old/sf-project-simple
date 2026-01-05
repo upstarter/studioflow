@@ -1,0 +1,476 @@
+#!/usr/bin/env python3
+"""
+sf-project - StudioFlow project generator (SIMPLIFIED)
+Create and manage video production projects with practical naming
+"""
+
+import sys
+import re
+import argparse
+import subprocess
+from pathlib import Path
+from datetime import datetime
+import json
+
+# Import shared core
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import (
+    Project, JsonStream, TEMPLATES, STORAGE_TIERS,
+    list_projects, CliHelper
+)
+
+def sanitize_name_strict(name: str) -> str:
+    """
+    Clean project name to follow strict convention:
+    - Replace spaces with underscores
+    - Remove special characters
+    - Title case each word
+    - Ensure valid filesystem name
+    """
+    # Replace common separators with underscores
+    clean = name.replace(" ", "_").replace("-", "_").replace(".", "_")
+
+    # Remove invalid characters (keep only alphanumeric and underscore)
+    clean = "".join(c for c in clean if c.isalnum() or c == "_")
+
+    # Remove multiple underscores
+    while "__" in clean:
+        clean = clean.replace("__", "_")
+
+    # Strip underscores from ends
+    clean = clean.strip("_")
+
+    # Title case each word
+    parts = clean.split("_")
+    clean = "_".join(word.capitalize() for word in parts if word)
+
+    return clean
+
+def parse_project_name(full_name: str) -> tuple:
+    """
+    Parse a project directory name to extract date and name
+    Returns: (date_str, name_str) or (None, full_name) if not matching convention
+    """
+    # Pattern: YYYYMMDD_Name
+    pattern = r"^(\d{8})_(.+)$"
+    match = re.match(pattern, full_name)
+
+    if match:
+        return match.group(1), match.group(2)
+    return None, full_name
+
+def get_project_path_strict(name: str, date: str = None) -> Path:
+    """
+    Get project path with strict naming convention
+    YYYYMMDD_Descriptive_Name_Format
+    """
+    clean_name = sanitize_name_strict(name)
+
+    if not clean_name:
+        JsonStream.error("Invalid project name after sanitization")
+
+    # Use provided date or today
+    if date:
+        # Validate date format
+        if not re.match(r"^\d{8}$", date):
+            JsonStream.error(f"Invalid date format: {date}. Use YYYYMMDD")
+        timestamp = date
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d")
+
+    project_name = f"{timestamp}_{clean_name}"
+    return Path("/mnt/studio/Projects") / project_name
+
+def create_project(name: str, template: str = "youtube", options: dict = None):
+    """Create a new project with practical naming"""
+    options = options or {}
+
+    # Get project path with strict naming
+    project_path = get_project_path_strict(name, options.get("date"))
+
+    # Show what the name will be
+    print(f"Creating project: {project_path.name}", file=sys.stderr)
+
+    # Check if exists
+    if project_path.exists():
+        JsonStream.error(f"Project already exists: {project_path.name}")
+
+    # Create project directory
+    project_path.mkdir(parents=True)
+
+    # Create structure from template
+    template_def = TEMPLATES.get(template, TEMPLATES["minimal"])
+    for dir_path in template_def["dirs"]:
+        (project_path / dir_path).mkdir(parents=True, exist_ok=True)
+
+    # Create project object
+    project = Project(project_path)
+
+    # Save manifest
+    manifest = {
+        "name": name,
+        "created": datetime.now().isoformat(),
+        "template": template,
+        "status": "active",
+        "naming_convention": "simple",
+        "options": options
+    }
+    project.save_manifest(manifest)
+
+    # Create README
+    readme = project_path / "README.md"
+    readme.write_text(f"""# {name}
+
+Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Template: {template}
+Project ID: {project_path.name}
+
+## Quick Start
+
+1. Import footage to `01_FOOTAGE/`
+2. Open project in DaVinci Resolve
+3. Edit timeline in `04_EDIT/TIMELINE/`
+4. Export to `05_EXPORT/FINAL/`
+
+## Notes
+
+## Tasks
+- [ ] Import footage
+- [ ] Create rough cut
+- [ ] Color grade
+- [ ] Audio mix
+- [ ] Export final
+""")
+
+    # Initialize git if requested
+    if options.get("git", True):
+        try:
+            subprocess.run(["git", "init"], cwd=project_path, capture_output=True, check=True)
+
+            # Create .gitignore
+            gitignore = project_path / ".gitignore"
+            gitignore.write_text("""# StudioFlow defaults
+*.cache
+*_cache/
+CACHE/
+*.tmp
+.DS_Store
+
+# Video files (too large for git)
+*.mov
+*.mp4
+*.mkv
+*.avi
+*.mxf
+*.r3d
+
+# Audio files (usually large)
+*.wav
+*.aif
+*.aiff
+
+# DaVinci Resolve
+*.drp
+*.drb
+CacheClip/
+ProxyMedia/
+OptimizedMedia/
+""")
+
+            subprocess.run(["git", "add", "."], cwd=project_path, capture_output=True)
+            subprocess.run(
+                ["git", "commit", "-m", "Initial project structure"],
+                cwd=project_path,
+                capture_output=True
+            )
+        except:
+            pass  # Git is optional
+
+    # Create DaVinci Resolve project file placeholder
+    (project_path / f"{project_path.name}.drp").touch()
+
+    # Create Current symlink if requested
+    if options.get("current"):
+        current_dir = Path("/mnt/studio/Projects/Current")
+        current_dir.mkdir(exist_ok=True)
+        symlink_path = current_dir / sanitize_name_strict(name)
+        if symlink_path.exists():
+            symlink_path.unlink()
+        symlink_path.symlink_to(project_path)
+        print(f"Created symlink in Current: {symlink_path.name}", file=sys.stderr)
+
+    # Emit success event
+    project.emit_event("created", {"template": template})
+
+    # Return success
+    JsonStream.success(
+        f"Created project: {project_path.name}",
+        {"path": str(project_path), "name": project_path.name}
+    )
+
+def cleanup_project_names(dry_run: bool = True):
+    """
+    Rename existing projects to follow strict naming convention
+    """
+    projects_dir = Path("/mnt/studio/Projects")
+
+    if not projects_dir.exists():
+        JsonStream.error("Projects directory not found")
+
+    renamed = []
+    skipped = []
+    errors = []
+
+    for path in projects_dir.iterdir():
+        if not path.is_dir():
+            continue
+
+        # Skip special directories
+        if path.name in ["Current", "Templates", "Test", ".gallery"]:
+            continue
+
+        old_name = path.name
+        date_str, name_part = parse_project_name(old_name)
+
+        # Check if already follows convention
+        if date_str and re.match(r"^\d{8}$", date_str):
+            # Check if name part needs cleaning
+            clean_name = sanitize_name_strict(name_part)
+            if name_part == clean_name:
+                skipped.append({"name": old_name, "reason": "Already correct"})
+                continue
+
+            new_name = f"{date_str}_{clean_name}"
+        else:
+            # No date prefix, add today's date
+            clean_name = sanitize_name_strict(old_name)
+
+            # Try to extract date from directory modification time
+            stat = path.stat()
+            date_str = datetime.fromtimestamp(stat.st_mtime).strftime("%Y%m%d")
+
+            new_name = f"{date_str}_{clean_name}"
+
+        if new_name == old_name:
+            skipped.append({"name": old_name, "reason": "No changes needed"})
+            continue
+
+        new_path = projects_dir / new_name
+
+        # Check for conflicts
+        if new_path.exists():
+            errors.append({
+                "name": old_name,
+                "new_name": new_name,
+                "error": "Destination already exists"
+            })
+            continue
+
+        if dry_run:
+            renamed.append({"old": old_name, "new": new_name})
+        else:
+            try:
+                path.rename(new_path)
+
+                # Update Current symlinks if needed
+                current_dir = projects_dir / "Current"
+                if current_dir.exists():
+                    for symlink in current_dir.iterdir():
+                        if symlink.is_symlink():
+                            target = symlink.resolve()
+                            if target == path:
+                                # Update symlink
+                                symlink.unlink()
+                                symlink.symlink_to(new_path)
+
+                renamed.append({"old": old_name, "new": new_name})
+            except Exception as e:
+                errors.append({
+                    "name": old_name,
+                    "new_name": new_name,
+                    "error": str(e)
+                })
+
+    # Report results
+    result = {
+        "dry_run": dry_run,
+        "renamed": renamed,
+        "skipped": skipped,
+        "errors": errors,
+        "summary": {
+            "renamed_count": len(renamed),
+            "skipped_count": len(skipped),
+            "error_count": len(errors)
+        }
+    }
+
+    JsonStream.emit(result)
+
+    if dry_run and renamed:
+        print("\nTo apply these changes, run with --apply flag", file=sys.stderr)
+
+def validate_name(name: str):
+    """Validate and show what a project name will become"""
+    clean_name = sanitize_name_strict(name)
+    timestamp = datetime.now().strftime("%Y%m%d")
+    full_name = f"{timestamp}_{clean_name}"
+
+    result = {
+        "input": name,
+        "cleaned": clean_name,
+        "date": timestamp,
+        "full_name": full_name,
+        "valid": bool(clean_name)
+    }
+
+    JsonStream.emit(result)
+
+def list_projects_by_topic():
+    """List projects grouped by common topics"""
+    projects_dir = Path("/mnt/studio/Projects")
+
+    topic_map = {}
+    standalone = []
+
+    for project in projects_dir.iterdir():
+        if not project.is_dir():
+            continue
+
+        # Skip special directories
+        if project.name in ["Current", "Templates", "Test", ".gallery"]:
+            continue
+
+        date_str, name_part = parse_project_name(project.name)
+        if not name_part:
+            name_part = project.name
+
+        # Try to detect common topic (first 2-3 words)
+        words = name_part.split("_")
+        if len(words) >= 3:
+            # Likely a topic-based name
+            topic = "_".join(words[:2])
+
+            if topic not in topic_map:
+                topic_map[topic] = []
+            topic_map[topic].append(project.name)
+        else:
+            standalone.append(project.name)
+
+    result = {
+        "topics": topic_map,
+        "standalone": standalone,
+        "topic_count": len(topic_map),
+        "standalone_count": len(standalone)
+    }
+
+    JsonStream.emit(result)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='StudioFlow project management (simplified)',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Create with descriptive name
+  sf-project create "StudioFlow Install Guide"
+  sf-project create "Python Basics Variables"
+  sf-project create "iPhone 15 Review"
+
+  # Create and add to Current
+  sf-project create "OBS Setup Tutorial" --current
+
+  # Override date
+  sf-project create "Old Project" --date 20240101
+
+  # Validate name
+  sf-project validate "my video title!!!"
+
+  # List projects
+  sf-project list
+  sf-project list-topics
+
+  # Clean up names
+  sf-project cleanup --dry-run
+  sf-project cleanup --apply
+"""
+    )
+
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+
+    # Create command
+    create_parser = subparsers.add_parser('create', help='Create new project')
+    create_parser.add_argument('name', help='Descriptive project name')
+    create_parser.add_argument('-t', '--template', default='youtube',
+                              choices=list(TEMPLATES.keys()),
+                              help='Project template (default: youtube)')
+    create_parser.add_argument('--date', help='Override date (YYYYMMDD format)')
+    create_parser.add_argument('--no-git', action='store_true',
+                              help='Skip git initialization')
+    create_parser.add_argument('--current', action='store_true',
+                              help='Create symlink in Current directory')
+
+    # Cleanup command
+    cleanup_parser = subparsers.add_parser('cleanup',
+                                          help='Rename projects to follow convention')
+    cleanup_parser.add_argument('--dry-run', action='store_true', default=True,
+                               help='Show what would be renamed (default)')
+    cleanup_parser.add_argument('--apply', action='store_true',
+                               help='Actually rename projects')
+
+    # Validate command
+    validate_parser = subparsers.add_parser('validate',
+                                           help='Show how name will be cleaned')
+    validate_parser.add_argument('name', help='Project name to validate')
+
+    # List commands
+    list_parser = subparsers.add_parser('list', help='List all projects')
+
+    topics_parser = subparsers.add_parser('list-topics',
+                                          help='List projects grouped by topic')
+
+    # Info command
+    info_parser = subparsers.add_parser('info', help='Show project info')
+    info_parser.add_argument('name', help='Project name or path')
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    if args.command == 'create':
+        options = {'git': not args.no_git, 'current': args.current}
+        if args.date:
+            options['date'] = args.date
+        create_project(args.name, args.template, options)
+
+    elif args.command == 'cleanup':
+        cleanup_project_names(dry_run=not args.apply)
+
+    elif args.command == 'validate':
+        validate_name(args.name)
+
+    elif args.command == 'list':
+        projects = list_projects()
+        JsonStream.emit({
+            "projects": [p.name for p in projects],
+            "count": len(projects)
+        })
+
+    elif args.command == 'list-topics':
+        list_projects_by_topic()
+
+    elif args.command == 'info':
+        # Would need to implement info function
+        project = CliHelper.require_project(args.name)
+        info = {
+            "name": project.name,
+            "path": str(project.path),
+            "created": project.created,
+            "template": project.template,
+            "status": project.status
+        }
+        JsonStream.emit(info)
+
+if __name__ == '__main__':
+    main()

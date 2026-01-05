@@ -1,0 +1,1416 @@
+{
+  "text": "In 2024, we saw a significant increase in climate change awareness. The data shows a 50% increase in public concern. The problem we face is serious. We need immediate action to address this crisis. Scientists agree that time is running out. The solution is clear. We must reduce emissions by 50% by 2030. This requires cooperation from governments, businesses, and individuals. I remember when we first noticed the changes. It was 2020 when the wildfires became more frequent and intense. What can we do? We can start by making small changes in our daily lives. Every action counts. In conclusion, we must work together to solve this challenge. The future depends on our actions today.",
+  "language": "en",
+  "duration": 49.98,
+  "words": [
+    {
+      "word": "In",
+      "start": 3.0399999999999996,
+      "end": 3.68
+    },
+    {
+      "word": "2024,",
+      "start": 3.68,
+      "end": 4.22
+    },
+    {
+      "word": "we",
+      "start": 4.68,
+      "end": 4.74
+    },
+    {
+      "word": "saw",
+      "start": 4.74,
+      "end": 5.0
+    },
+    {
+      "word": "a",
+      "start": 5.0,
+      "end": 5.24
+    },
+    {
+      "word": "significant",
+      "start": 5.24,
+      "end": 5.66
+    },
+    {
+      "word": "increase",
+      "start": 5.66,
+      "end": 6.14
+    },
+    {
+      "word": "in",
+      "start": 6.14,
+      "end": 6.38
+    },
+    {
+      "word": "climate",
+      "start": 6.38,
+      "end": 6.62
+    },
+    {
+      "word": "change",
+      "start": 6.62,
+      "end": 7.0
+    },
+    {
+      "word": "awareness.",
+      "start": 7.0,
+      "end": 7.46
+    },
+    {
+      "word": "The",
+      "start": 8.0,
+      "end": 8.34
+    },
+    {
+      "word": "data",
+      "start": 8.34,
+      "end": 8.54
+    },
+    {
+      "word": "shows",
+      "start": 8.54,
+      "end": 8.86
+    },
+    {
+      "word": "a",
+      "start": 8.86,
+      "end": 9.08
+    },
+    {
+      "word": "50",
+      "start": 9.08,
+      "end": 9.36
+    },
+    {
+      "word": "%",
+      "start": 9.36,
+      "end": 9.68
+    },
+    {
+      "word": "increase",
+      "start": 9.68,
+      "end": 10.08
+    },
+    {
+      "word": "in",
+      "start": 10.08,
+      "end": 10.28
+    },
+    {
+      "word": "public",
+      "start": 10.28,
+      "end": 10.52
+    },
+    {
+      "word": "concern.",
+      "start": 10.52,
+      "end": 10.96
+    },
+    {
+      "word": "The",
+      "start": 13.62,
+      "end": 13.94
+    },
+    {
+      "word": "problem",
+      "start": 13.94,
+      "end": 14.28
+    },
+    {
+      "word": "we",
+      "start": 14.28,
+      "end": 14.6
+    },
+    {
+      "word": "face",
+      "start": 14.6,
+      "end": 14.82
+    },
+    {
+      "word": "is",
+      "start": 14.82,
+      "end": 15.02
+    },
+    {
+      "word": "serious.",
+      "start": 15.02,
+      "end": 15.4
+    },
+    {
+      "word": "We",
+      "start": 15.6,
+      "end": 15.68
+    },
+    {
+      "word": "need",
+      "start": 15.68,
+      "end": 15.86
+    },
+    {
+      "word": "immediate",
+      "start": 15.86,
+      "end": 16.2
+    },
+    {
+      "word": "action",
+      "start": 16.2,
+      "end": 16.6
+    },
+    {
+      "word": "to",
+      "start": 16.6,
+      "end": 16.8
+    },
+    {
+      "word": "address",
+      "start": 16.8,
+      "end": 17.08
+    },
+    {
+      "word": "this",
+      "start": 17.08,
+      "end": 17.34
+    },
+    {
+      "word": "crisis.",
+      "start": 17.34,
+      "end": 17.8
+    },
+    {
+      "word": "Scientists",
+      "start": 18.14,
+      "end": 18.4
+    },
+    {
+      "word": "agree",
+      "start": 18.4,
+      "end": 18.86
+    },
+    {
+      "word": "that",
+      "start": 18.86,
+      "end": 19.04
+    },
+    {
+      "word": "time",
+      "start": 19.04,
+      "end": 19.32
+    },
+    {
+      "word": "is",
+      "start": 19.32,
+      "end": 19.48
+    },
+    {
+      "word": "running",
+      "start": 19.48,
+      "end": 19.7
+    },
+    {
+      "word": "out.",
+      "start": 19.7,
+      "end": 19.94
+    },
+    {
+      "word": "The",
+      "start": 21.38,
+      "end": 21.7
+    },
+    {
+      "word": "solution",
+      "start": 21.7,
+      "end": 22.02
+    },
+    {
+      "word": "is",
+      "start": 22.02,
+      "end": 22.4
+    },
+    {
+      "word": "clear.",
+      "start": 22.4,
+      "end": 22.72
+    },
+    {
+      "word": "We",
+      "start": 23.34,
+      "end": 23.4
+    },
+    {
+      "word": "must",
+      "start": 23.4,
+      "end": 23.66
+    },
+    {
+      "word": "reduce",
+      "start": 23.66,
+      "end": 23.9
+    },
+    {
+      "word": "emissions",
+      "start": 23.9,
+      "end": 24.26
+    },
+    {
+      "word": "by",
+      "start": 24.26,
+      "end": 24.62
+    },
+    {
+      "word": "50",
+      "start": 24.62,
+      "end": 24.92
+    },
+    {
+      "word": "%",
+      "start": 24.92,
+      "end": 25.26
+    },
+    {
+      "word": "by",
+      "start": 25.26,
+      "end": 25.54
+    },
+    {
+      "word": "2030.",
+      "start": 25.54,
+      "end": 26.12
+    },
+    {
+      "word": "This",
+      "start": 26.12,
+      "end": 26.82
+    },
+    {
+      "word": "requires",
+      "start": 26.82,
+      "end": 27.16
+    },
+    {
+      "word": "cooperation",
+      "start": 27.16,
+      "end": 27.84
+    },
+    {
+      "word": "from",
+      "start": 27.84,
+      "end": 28.12
+    },
+    {
+      "word": "governments,",
+      "start": 28.12,
+      "end": 28.56
+    },
+    {
+      "word": "businesses,",
+      "start": 28.9,
+      "end": 29.4
+    },
+    {
+      "word": "and",
+      "start": 29.74,
+      "end": 29.84
+    },
+    {
+      "word": "individuals.",
+      "start": 29.84,
+      "end": 30.36
+    },
+    {
+      "word": "I",
+      "start": 31.42,
+      "end": 31.94
+    },
+    {
+      "word": "remember",
+      "start": 31.94,
+      "end": 32.32
+    },
+    {
+      "word": "when",
+      "start": 32.32,
+      "end": 32.58
+    },
+    {
+      "word": "we",
+      "start": 32.58,
+      "end": 32.74
+    },
+    {
+      "word": "first",
+      "start": 32.74,
+      "end": 32.92
+    },
+    {
+      "word": "noticed",
+      "start": 32.92,
+      "end": 33.22
+    },
+    {
+      "word": "the",
+      "start": 33.22,
+      "end": 33.48
+    },
+    {
+      "word": "changes.",
+      "start": 33.48,
+      "end": 33.82
+    },
+    {
+      "word": "It",
+      "start": 34.02,
+      "end": 34.04
+    },
+    {
+      "word": "was",
+      "start": 34.04,
+      "end": 34.16
+    },
+    {
+      "word": "2020",
+      "start": 34.16,
+      "end": 34.68
+    },
+    {
+      "word": "when",
+      "start": 34.68,
+      "end": 35.0
+    },
+    {
+      "word": "the",
+      "start": 35.0,
+      "end": 35.12
+    },
+    {
+      "word": "wildfires",
+      "start": 35.12,
+      "end": 35.54
+    },
+    {
+      "word": "became",
+      "start": 35.54,
+      "end": 35.9
+    },
+    {
+      "word": "more",
+      "start": 35.9,
+      "end": 36.16
+    },
+    {
+      "word": "frequent",
+      "start": 36.16,
+      "end": 36.48
+    },
+    {
+      "word": "and",
+      "start": 36.48,
+      "end": 36.72
+    },
+    {
+      "word": "intense.",
+      "start": 36.72,
+      "end": 37.18
+    },
+    {
+      "word": "What",
+      "start": 38.12,
+      "end": 38.68
+    },
+    {
+      "word": "can",
+      "start": 38.68,
+      "end": 38.86
+    },
+    {
+      "word": "we",
+      "start": 38.86,
+      "end": 39.04
+    },
+    {
+      "word": "do?",
+      "start": 39.04,
+      "end": 39.26
+    },
+    {
+      "word": "We",
+      "start": 39.86,
+      "end": 39.98
+    },
+    {
+      "word": "can",
+      "start": 39.98,
+      "end": 40.06
+    },
+    {
+      "word": "start",
+      "start": 40.06,
+      "end": 40.32
+    },
+    {
+      "word": "by",
+      "start": 40.32,
+      "end": 40.54
+    },
+    {
+      "word": "making",
+      "start": 40.54,
+      "end": 40.78
+    },
+    {
+      "word": "small",
+      "start": 40.78,
+      "end": 41.14
+    },
+    {
+      "word": "changes",
+      "start": 41.14,
+      "end": 41.5
+    },
+    {
+      "word": "in",
+      "start": 41.5,
+      "end": 41.7
+    },
+    {
+      "word": "our",
+      "start": 41.7,
+      "end": 41.8
+    },
+    {
+      "word": "daily",
+      "start": 41.8,
+      "end": 42.02
+    },
+    {
+      "word": "lives.",
+      "start": 42.02,
+      "end": 42.48
+    },
+    {
+      "word": "Every",
+      "start": 42.66,
+      "end": 43.06
+    },
+    {
+      "word": "action",
+      "start": 43.06,
+      "end": 43.46
+    },
+    {
+      "word": "counts.",
+      "start": 43.46,
+      "end": 43.84
+    },
+    {
+      "word": "In",
+      "start": 45.14,
+      "end": 45.34
+    },
+    {
+      "word": "conclusion,",
+      "start": 45.34,
+      "end": 45.72
+    },
+    {
+      "word": "we",
+      "start": 45.96,
+      "end": 46.06
+    },
+    {
+      "word": "must",
+      "start": 46.06,
+      "end": 46.2
+    },
+    {
+      "word": "work",
+      "start": 46.2,
+      "end": 46.42
+    },
+    {
+      "word": "together",
+      "start": 46.42,
+      "end": 46.78
+    },
+    {
+      "word": "to",
+      "start": 46.78,
+      "end": 47.02
+    },
+    {
+      "word": "solve",
+      "start": 47.02,
+      "end": 47.28
+    },
+    {
+      "word": "this",
+      "start": 47.28,
+      "end": 47.48
+    },
+    {
+      "word": "challenge.",
+      "start": 47.48,
+      "end": 47.88
+    },
+    {
+      "word": "The",
+      "start": 48.08,
+      "end": 48.14
+    },
+    {
+      "word": "future",
+      "start": 48.14,
+      "end": 48.38
+    },
+    {
+      "word": "depends",
+      "start": 48.38,
+      "end": 48.74
+    },
+    {
+      "word": "on",
+      "start": 48.74,
+      "end": 49.12
+    },
+    {
+      "word": "our",
+      "start": 49.12,
+      "end": 49.26
+    },
+    {
+      "word": "actions",
+      "start": 49.26,
+      "end": 49.54
+    },
+    {
+      "word": "today.",
+      "start": 49.54,
+      "end": 49.98
+    }
+  ],
+  "segments": [
+    {
+      "id": 0,
+      "start": 3.0399999999999996,
+      "end": 7.46,
+      "text": "In 2024, we saw a significant increase in climate change awareness.",
+      "words": [
+        {
+          "word": " In",
+          "start": 3.0399999999999996,
+          "end": 3.68,
+          "probability": 0.4142747223377228
+        },
+        {
+          "word": " 2024,",
+          "start": 3.68,
+          "end": 4.22,
+          "probability": 0.9572650194168091
+        },
+        {
+          "word": " we",
+          "start": 4.68,
+          "end": 4.74,
+          "probability": 0.9907021522521973
+        },
+        {
+          "word": " saw",
+          "start": 4.74,
+          "end": 5.0,
+          "probability": 0.9323114156723022
+        },
+        {
+          "word": " a",
+          "start": 5.0,
+          "end": 5.24,
+          "probability": 0.9920650124549866
+        },
+        {
+          "word": " significant",
+          "start": 5.24,
+          "end": 5.66,
+          "probability": 0.9963681697845459
+        },
+        {
+          "word": " increase",
+          "start": 5.66,
+          "end": 6.14,
+          "probability": 0.9973495006561279
+        },
+        {
+          "word": " in",
+          "start": 6.14,
+          "end": 6.38,
+          "probability": 0.9936696887016296
+        },
+        {
+          "word": " climate",
+          "start": 6.38,
+          "end": 6.62,
+          "probability": 0.9896298050880432
+        },
+        {
+          "word": " change",
+          "start": 6.62,
+          "end": 7.0,
+          "probability": 0.9942939877510071
+        },
+        {
+          "word": " awareness.",
+          "start": 7.0,
+          "end": 7.46,
+          "probability": 0.9954944849014282
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "start": 8.0,
+      "end": 10.96,
+      "text": "The data shows a 50% increase in public concern.",
+      "words": [
+        {
+          "word": " The",
+          "start": 8.0,
+          "end": 8.34,
+          "probability": 0.9894165396690369
+        },
+        {
+          "word": " data",
+          "start": 8.34,
+          "end": 8.54,
+          "probability": 0.9940004348754883
+        },
+        {
+          "word": " shows",
+          "start": 8.54,
+          "end": 8.86,
+          "probability": 0.9949802756309509
+        },
+        {
+          "word": " a",
+          "start": 8.86,
+          "end": 9.08,
+          "probability": 0.9908726811408997
+        },
+        {
+          "word": " 50",
+          "start": 9.08,
+          "end": 9.36,
+          "probability": 0.9782694578170776
+        },
+        {
+          "word": "%",
+          "start": 9.36,
+          "end": 9.68,
+          "probability": 0.7937915921211243
+        },
+        {
+          "word": " increase",
+          "start": 9.68,
+          "end": 10.08,
+          "probability": 0.9945113658905029
+        },
+        {
+          "word": " in",
+          "start": 10.08,
+          "end": 10.28,
+          "probability": 0.9990969896316528
+        },
+        {
+          "word": " public",
+          "start": 10.28,
+          "end": 10.52,
+          "probability": 0.9970152378082275
+        },
+        {
+          "word": " concern.",
+          "start": 10.52,
+          "end": 10.96,
+          "probability": 0.9973505735397339
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "start": 13.92,
+      "end": 15.4,
+      "text": "The problem we face is serious.",
+      "words": [
+        {
+          "word": " The",
+          "start": 13.62,
+          "end": 13.94,
+          "probability": 0.9841118454933167
+        },
+        {
+          "word": " problem",
+          "start": 13.94,
+          "end": 14.28,
+          "probability": 0.9981830716133118
+        },
+        {
+          "word": " we",
+          "start": 14.28,
+          "end": 14.6,
+          "probability": 0.9807433485984802
+        },
+        {
+          "word": " face",
+          "start": 14.6,
+          "end": 14.82,
+          "probability": 0.9831175804138184
+        },
+        {
+          "word": " is",
+          "start": 14.82,
+          "end": 15.02,
+          "probability": 0.9894241690635681
+        },
+        {
+          "word": " serious.",
+          "start": 15.02,
+          "end": 15.4,
+          "probability": 0.9957841038703918
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "start": 15.6,
+      "end": 17.8,
+      "text": "We need immediate action to address this crisis.",
+      "words": [
+        {
+          "word": " We",
+          "start": 15.6,
+          "end": 15.68,
+          "probability": 0.9937694668769836
+        },
+        {
+          "word": " need",
+          "start": 15.68,
+          "end": 15.86,
+          "probability": 0.9974356293678284
+        },
+        {
+          "word": " immediate",
+          "start": 15.86,
+          "end": 16.2,
+          "probability": 0.9945642948150635
+        },
+        {
+          "word": " action",
+          "start": 16.2,
+          "end": 16.6,
+          "probability": 0.9957547187805176
+        },
+        {
+          "word": " to",
+          "start": 16.6,
+          "end": 16.8,
+          "probability": 0.9985253214836121
+        },
+        {
+          "word": " address",
+          "start": 16.8,
+          "end": 17.08,
+          "probability": 0.9969993829727173
+        },
+        {
+          "word": " this",
+          "start": 17.08,
+          "end": 17.34,
+          "probability": 0.9972100853919983
+        },
+        {
+          "word": " crisis.",
+          "start": 17.34,
+          "end": 17.8,
+          "probability": 0.9992765784263611
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "start": 18.14,
+      "end": 19.94,
+      "text": "Scientists agree that time is running out.",
+      "words": [
+        {
+          "word": " Scientists",
+          "start": 18.14,
+          "end": 18.4,
+          "probability": 0.9609036445617676
+        },
+        {
+          "word": " agree",
+          "start": 18.4,
+          "end": 18.86,
+          "probability": 0.9956603646278381
+        },
+        {
+          "word": " that",
+          "start": 18.86,
+          "end": 19.04,
+          "probability": 0.9789831638336182
+        },
+        {
+          "word": " time",
+          "start": 19.04,
+          "end": 19.32,
+          "probability": 0.9951505661010742
+        },
+        {
+          "word": " is",
+          "start": 19.32,
+          "end": 19.48,
+          "probability": 0.998783528804779
+        },
+        {
+          "word": " running",
+          "start": 19.48,
+          "end": 19.7,
+          "probability": 0.9978492259979248
+        },
+        {
+          "word": " out.",
+          "start": 19.7,
+          "end": 19.94,
+          "probability": 0.9973742961883545
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "start": 21.68,
+      "end": 22.72,
+      "text": "The solution is clear.",
+      "words": [
+        {
+          "word": " The",
+          "start": 21.38,
+          "end": 21.7,
+          "probability": 0.9836090207099915
+        },
+        {
+          "word": " solution",
+          "start": 21.7,
+          "end": 22.02,
+          "probability": 0.9963983297348022
+        },
+        {
+          "word": " is",
+          "start": 22.02,
+          "end": 22.4,
+          "probability": 0.9991289973258972
+        },
+        {
+          "word": " clear.",
+          "start": 22.4,
+          "end": 22.72,
+          "probability": 0.9940922856330872
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "start": 23.34,
+      "end": 26.12,
+      "text": "We must reduce emissions by 50% by 2030.",
+      "words": [
+        {
+          "word": " We",
+          "start": 23.34,
+          "end": 23.4,
+          "probability": 0.9918310046195984
+        },
+        {
+          "word": " must",
+          "start": 23.4,
+          "end": 23.66,
+          "probability": 0.9949843883514404
+        },
+        {
+          "word": " reduce",
+          "start": 23.66,
+          "end": 23.9,
+          "probability": 0.9435964226722717
+        },
+        {
+          "word": " emissions",
+          "start": 23.9,
+          "end": 24.26,
+          "probability": 0.996006190776825
+        },
+        {
+          "word": " by",
+          "start": 24.26,
+          "end": 24.62,
+          "probability": 0.9949836730957031
+        },
+        {
+          "word": " 50",
+          "start": 24.62,
+          "end": 24.92,
+          "probability": 0.9889575839042664
+        },
+        {
+          "word": "%",
+          "start": 24.92,
+          "end": 25.26,
+          "probability": 0.8833598494529724
+        },
+        {
+          "word": " by",
+          "start": 25.26,
+          "end": 25.54,
+          "probability": 0.9924161434173584
+        },
+        {
+          "word": " 2030.",
+          "start": 25.54,
+          "end": 26.12,
+          "probability": 0.986928403377533
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "start": 26.12,
+      "end": 30.36,
+      "text": "This requires cooperation from governments, businesses, and individuals.",
+      "words": [
+        {
+          "word": " This",
+          "start": 26.12,
+          "end": 26.82,
+          "probability": 0.7391224503517151
+        },
+        {
+          "word": " requires",
+          "start": 26.82,
+          "end": 27.16,
+          "probability": 0.9912170171737671
+        },
+        {
+          "word": " cooperation",
+          "start": 27.16,
+          "end": 27.84,
+          "probability": 0.9862596988677979
+        },
+        {
+          "word": " from",
+          "start": 27.84,
+          "end": 28.12,
+          "probability": 0.9661603569984436
+        },
+        {
+          "word": " governments,",
+          "start": 28.12,
+          "end": 28.56,
+          "probability": 0.9674398303031921
+        },
+        {
+          "word": " businesses,",
+          "start": 28.9,
+          "end": 29.4,
+          "probability": 0.9869939684867859
+        },
+        {
+          "word": " and",
+          "start": 29.74,
+          "end": 29.84,
+          "probability": 0.9804441928863525
+        },
+        {
+          "word": " individuals.",
+          "start": 29.84,
+          "end": 30.36,
+          "probability": 0.9858912825584412
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "start": 31.42,
+      "end": 33.82,
+      "text": "I remember when we first noticed the changes.",
+      "words": [
+        {
+          "word": " I",
+          "start": 31.42,
+          "end": 31.94,
+          "probability": 0.9918141961097717
+        },
+        {
+          "word": " remember",
+          "start": 31.94,
+          "end": 32.32,
+          "probability": 0.9948252439498901
+        },
+        {
+          "word": " when",
+          "start": 32.32,
+          "end": 32.58,
+          "probability": 0.9777644872665405
+        },
+        {
+          "word": " we",
+          "start": 32.58,
+          "end": 32.74,
+          "probability": 0.9939906597137451
+        },
+        {
+          "word": " first",
+          "start": 32.74,
+          "end": 32.92,
+          "probability": 0.9986109733581543
+        },
+        {
+          "word": " noticed",
+          "start": 32.92,
+          "end": 33.22,
+          "probability": 0.987375020980835
+        },
+        {
+          "word": " the",
+          "start": 33.22,
+          "end": 33.48,
+          "probability": 0.982164740562439
+        },
+        {
+          "word": " changes.",
+          "start": 33.48,
+          "end": 33.82,
+          "probability": 0.9947399497032166
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "start": 34.02,
+      "end": 37.18,
+      "text": "It was 2020 when the wildfires became more frequent and intense.",
+      "words": [
+        {
+          "word": " It",
+          "start": 34.02,
+          "end": 34.04,
+          "probability": 0.9808686971664429
+        },
+        {
+          "word": " was",
+          "start": 34.04,
+          "end": 34.16,
+          "probability": 0.9979077577590942
+        },
+        {
+          "word": " 2020",
+          "start": 34.16,
+          "end": 34.68,
+          "probability": 0.9423810839653015
+        },
+        {
+          "word": " when",
+          "start": 34.68,
+          "end": 35.0,
+          "probability": 0.8780863881111145
+        },
+        {
+          "word": " the",
+          "start": 35.0,
+          "end": 35.12,
+          "probability": 0.9843378663063049
+        },
+        {
+          "word": " wildfires",
+          "start": 35.12,
+          "end": 35.54,
+          "probability": 0.9826123118400574
+        },
+        {
+          "word": " became",
+          "start": 35.54,
+          "end": 35.9,
+          "probability": 0.9955735206604004
+        },
+        {
+          "word": " more",
+          "start": 35.9,
+          "end": 36.16,
+          "probability": 0.9982597231864929
+        },
+        {
+          "word": " frequent",
+          "start": 36.16,
+          "end": 36.48,
+          "probability": 0.9989155530929565
+        },
+        {
+          "word": " and",
+          "start": 36.48,
+          "end": 36.72,
+          "probability": 0.9790188074111938
+        },
+        {
+          "word": " intense.",
+          "start": 36.72,
+          "end": 37.18,
+          "probability": 0.9962498545646667
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "start": 38.12,
+      "end": 39.26,
+      "text": "What can we do?",
+      "words": [
+        {
+          "word": " What",
+          "start": 38.12,
+          "end": 38.68,
+          "probability": 0.9213948249816895
+        },
+        {
+          "word": " can",
+          "start": 38.68,
+          "end": 38.86,
+          "probability": 0.9964795708656311
+        },
+        {
+          "word": " we",
+          "start": 38.86,
+          "end": 39.04,
+          "probability": 0.997212827205658
+        },
+        {
+          "word": " do?",
+          "start": 39.04,
+          "end": 39.26,
+          "probability": 0.999500036239624
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "start": 39.86,
+      "end": 42.48,
+      "text": "We can start by making small changes in our daily lives.",
+      "words": [
+        {
+          "word": " We",
+          "start": 39.86,
+          "end": 39.98,
+          "probability": 0.951125979423523
+        },
+        {
+          "word": " can",
+          "start": 39.98,
+          "end": 40.06,
+          "probability": 0.9778894782066345
+        },
+        {
+          "word": " start",
+          "start": 40.06,
+          "end": 40.32,
+          "probability": 0.9889128804206848
+        },
+        {
+          "word": " by",
+          "start": 40.32,
+          "end": 40.54,
+          "probability": 0.9930156469345093
+        },
+        {
+          "word": " making",
+          "start": 40.54,
+          "end": 40.78,
+          "probability": 0.9982362985610962
+        },
+        {
+          "word": " small",
+          "start": 40.78,
+          "end": 41.14,
+          "probability": 0.9947075843811035
+        },
+        {
+          "word": " changes",
+          "start": 41.14,
+          "end": 41.5,
+          "probability": 0.9990018010139465
+        },
+        {
+          "word": " in",
+          "start": 41.5,
+          "end": 41.7,
+          "probability": 0.9878147840499878
+        },
+        {
+          "word": " our",
+          "start": 41.7,
+          "end": 41.8,
+          "probability": 0.9977748990058899
+        },
+        {
+          "word": " daily",
+          "start": 41.8,
+          "end": 42.02,
+          "probability": 0.9997747540473938
+        },
+        {
+          "word": " lives.",
+          "start": 42.02,
+          "end": 42.48,
+          "probability": 0.9981060028076172
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "start": 42.66,
+      "end": 43.84,
+      "text": "Every action counts.",
+      "words": [
+        {
+          "word": " Every",
+          "start": 42.66,
+          "end": 43.06,
+          "probability": 0.982358992099762
+        },
+        {
+          "word": " action",
+          "start": 43.06,
+          "end": 43.46,
+          "probability": 0.9848078489303589
+        },
+        {
+          "word": " counts.",
+          "start": 43.46,
+          "end": 43.84,
+          "probability": 0.9995864033699036
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "start": 45.14,
+      "end": 47.88,
+      "text": "In conclusion, we must work together to solve this challenge.",
+      "words": [
+        {
+          "word": " In",
+          "start": 45.14,
+          "end": 45.34,
+          "probability": 0.9939233660697937
+        },
+        {
+          "word": " conclusion,",
+          "start": 45.34,
+          "end": 45.72,
+          "probability": 0.9932304620742798
+        },
+        {
+          "word": " we",
+          "start": 45.96,
+          "end": 46.06,
+          "probability": 0.9974091649055481
+        },
+        {
+          "word": " must",
+          "start": 46.06,
+          "end": 46.2,
+          "probability": 0.9987273812294006
+        },
+        {
+          "word": " work",
+          "start": 46.2,
+          "end": 46.42,
+          "probability": 0.9989628791809082
+        },
+        {
+          "word": " together",
+          "start": 46.42,
+          "end": 46.78,
+          "probability": 0.9988787770271301
+        },
+        {
+          "word": " to",
+          "start": 46.78,
+          "end": 47.02,
+          "probability": 0.9980865716934204
+        },
+        {
+          "word": " solve",
+          "start": 47.02,
+          "end": 47.28,
+          "probability": 0.9991421699523926
+        },
+        {
+          "word": " this",
+          "start": 47.28,
+          "end": 47.48,
+          "probability": 0.9881919026374817
+        },
+        {
+          "word": " challenge.",
+          "start": 47.48,
+          "end": 47.88,
+          "probability": 0.9982717037200928
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "start": 48.08,
+      "end": 49.98,
+      "text": "The future depends on our actions today.",
+      "words": [
+        {
+          "word": " The",
+          "start": 48.08,
+          "end": 48.14,
+          "probability": 0.9854883551597595
+        },
+        {
+          "word": " future",
+          "start": 48.14,
+          "end": 48.38,
+          "probability": 0.998441755771637
+        },
+        {
+          "word": " depends",
+          "start": 48.38,
+          "end": 48.74,
+          "probability": 0.9971267580986023
+        },
+        {
+          "word": " on",
+          "start": 48.74,
+          "end": 49.12,
+          "probability": 0.9968640804290771
+        },
+        {
+          "word": " our",
+          "start": 49.12,
+          "end": 49.26,
+          "probability": 0.9953886270523071
+        },
+        {
+          "word": " actions",
+          "start": 49.26,
+          "end": 49.54,
+          "probability": 0.9973413348197937
+        },
+        {
+          "word": " today.",
+          "start": 49.54,
+          "end": 49.98,
+          "probability": 0.9956626296043396
+        }
+      ]
+    }
+  ]
+}

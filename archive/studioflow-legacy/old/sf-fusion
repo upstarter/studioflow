@@ -1,0 +1,289 @@
+#!/usr/bin/env python3
+"""
+sf-fusion - Fusion template management for StudioFlow
+Manages .setting files, macros, and Fusion compositions
+"""
+
+import sys
+import json
+import shutil
+import argparse
+from pathlib import Path
+from datetime import datetime
+
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import Project, JsonStream, find_project, CliHelper
+
+# Fusion template categories
+FUSION_CATEGORIES = {
+    "stingers": "Animated intros/outros",
+    "hud": "HUD overlays and elements",
+    "transitions": "Custom transitions",
+    "titles": "Title animations",
+    "effects": "Visual effects",
+    "tools": "Utility macros"
+}
+
+# Default Fusion templates location
+FUSION_USER_DIR = Path.home() / ".local/share/DaVinciResolve/Fusion/Templates"
+FUSION_SYSTEM_DIR = Path("/opt/resolve/Fusion/Templates")  # If exists
+
+def install_template(setting_file: Path, category: str = "effects", global_install: bool = False):
+    """Install a Fusion template to Resolve's template directory"""
+    if not setting_file.exists():
+        JsonStream.error(f"Template file not found: {setting_file}")
+
+    # Determine install location
+    if global_install and FUSION_SYSTEM_DIR.exists():
+        target_dir = FUSION_SYSTEM_DIR / "Edit/Generators" / category
+    else:
+        target_dir = FUSION_USER_DIR / "Edit/Generators" / category
+
+    # Create target directory
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy template
+    target_file = target_dir / setting_file.name
+    shutil.copy2(setting_file, target_file)
+
+    JsonStream.success(f"Installed template: {setting_file.name}", {
+        "location": str(target_dir),
+        "category": category,
+        "global": global_install
+    })
+
+def list_templates(project_name: str = None):
+    """List all Fusion templates in project or globally"""
+    templates = {}
+
+    # Check project templates
+    if project_name:
+        project = CliHelper.require_project(project_name)
+        fusion_dir = project.path / "03_GRAPHICS/FUSION_TEMPLATES"
+        if fusion_dir.exists():
+            for category_dir in fusion_dir.iterdir():
+                if category_dir.is_dir():
+                    templates[category_dir.name] = []
+                    for template in category_dir.glob("*.setting"):
+                        templates[category_dir.name].append({
+                            "name": template.stem,
+                            "file": template.name,
+                            "path": str(template),
+                            "size_kb": template.stat().st_size // 1024
+                        })
+
+    # Check user templates
+    if FUSION_USER_DIR.exists():
+        user_templates = {}
+        gen_dir = FUSION_USER_DIR / "Edit/Generators"
+        if gen_dir.exists():
+            for category_dir in gen_dir.iterdir():
+                if category_dir.is_dir():
+                    user_templates[category_dir.name] = []
+                    for template in category_dir.glob("*.setting"):
+                        user_templates[category_dir.name].append({
+                            "name": template.stem,
+                            "file": template.name
+                        })
+        if user_templates:
+            templates["_installed"] = user_templates
+
+    JsonStream.emit({
+        "templates": templates,
+        "project": project_name,
+        "count": sum(len(v) if isinstance(v, list) else sum(len(vv) for vv in v.values())
+                    for v in templates.values())
+    })
+
+def create_hud_overlay(project_name: str, title: str, subtitle: str = ""):
+    """Create a customized HUD overlay from base template"""
+    project = CliHelper.require_project(project_name)
+
+    # Base HUD template
+    hud_template = """
+{
+    Tools = ordered() {
+        HUD_Custom = MacroOperator {
+            Inputs = ordered() {
+                Title = Input { Value = "%TITLE%", },
+                Subtitle = Input { Value = "%SUBTITLE%", },
+                Color = Input { Value = { 0, 1, 1, 1 }, },
+                GlowIntensity = Input { Value = 1.0, },
+            },
+            Outputs = {
+                Output = InstanceOutput {
+                    SourceOp = "Merge_Final",
+                    Source = "Output",
+                }
+            },
+            ViewInfo = GroupInfo { Pos = { 0, 0 } },
+            Tools = ordered() {
+                Text_Title = Text {
+                    Inputs = {
+                        StyledText = Input { Value = "%TITLE%", },
+                        Font = Input { Value = "Arial", },
+                        Style = Input { Value = "Bold", },
+                        Size = Input { Value = 0.08, },
+                        Red = Input { Value = 0, },
+                        Green = Input { Value = 1, },
+                        Blue = Input { Value = 1, },
+                    },
+                },
+                Text_Subtitle = Text {
+                    Inputs = {
+                        StyledText = Input { Value = "%SUBTITLE%", },
+                        Font = Input { Value = "Arial", },
+                        Size = Input { Value = 0.05, },
+                        Red = Input { Value = 0, },
+                        Green = Input { Value = 0.8, },
+                        Blue = Input { Value = 0.8, },
+                    },
+                },
+                Merge_Text = Merge {
+                    Inputs = {
+                        Background = Input { SourceOp = "Text_Title", Source = "Output", },
+                        Foreground = Input { SourceOp = "Text_Subtitle", Source = "Output", },
+                    },
+                },
+                Glow_Main = Glow {
+                    Inputs = {
+                        Input = Input { SourceOp = "Merge_Text", Source = "Output", },
+                        Gain = Input { Value = 1.0, },
+                        XGlowSize = Input { Value = 10, },
+                    },
+                },
+                Merge_Final = Merge {
+                    Inputs = {
+                        Background = Input { SourceOp = "Glow_Main", Source = "Output", },
+                        ApplyMode = Input { Value = FuID { "Screen" }, },
+                    },
+                },
+            },
+        }
+    },
+    ActiveTool = "HUD_Custom"
+}
+"""
+
+    # Replace placeholders
+    hud_content = hud_template.replace("%TITLE%", title).replace("%SUBTITLE%", subtitle)
+
+    # Save to project
+    output_dir = project.path / "03_GRAPHICS/FUSION_TEMPLATES/HUD_Elements"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = f"HUD_{title.replace(' ', '_')}.setting"
+    output_file = output_dir / filename
+    output_file.write_text(hud_content)
+
+    JsonStream.success(f"Created HUD overlay: {filename}", {
+        "path": str(output_file),
+        "title": title,
+        "subtitle": subtitle
+    })
+
+def import_templates(project_name: str, source_dir: str):
+    """Import Fusion templates from another project or directory"""
+    project = CliHelper.require_project(project_name)
+    source = Path(source_dir)
+
+    if not source.exists():
+        JsonStream.error(f"Source directory not found: {source_dir}")
+
+    imported = []
+    fusion_dir = project.path / "03_GRAPHICS/FUSION_TEMPLATES"
+
+    # Find all .setting files
+    for setting_file in source.rglob("*.setting"):
+        # Determine category from path or default
+        if "stinger" in setting_file.name.lower():
+            category = "Stingers"
+        elif "hud" in setting_file.name.lower():
+            category = "HUD_Elements"
+        elif "transition" in setting_file.name.lower():
+            category = "Transitions"
+        else:
+            category = "Effects"
+
+        # Copy to project
+        target_dir = fusion_dir / category
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_file = target_dir / setting_file.name
+
+        shutil.copy2(setting_file, target_file)
+        imported.append({
+            "file": setting_file.name,
+            "category": category,
+            "size_kb": setting_file.stat().st_size // 1024
+        })
+
+    JsonStream.success(f"Imported {len(imported)} templates", {
+        "templates": imported,
+        "destination": str(fusion_dir)
+    })
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='StudioFlow Fusion template manager',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # List templates in current project
+  sf-fusion list "My Project"
+
+  # Install template to Resolve
+  sf-fusion install template.setting --category hud
+
+  # Create custom HUD overlay
+  sf-fusion create-hud "My Project" "RECORDING" "Take 3"
+
+  # Import templates from archive
+  sf-fusion import "My Project" /mnt/nas/Archive/Fusion_Templates
+"""
+    )
+
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+
+    # List command
+    list_parser = subparsers.add_parser('list', help='List available templates')
+    list_parser.add_argument('project', nargs='?', help='Project name')
+
+    # Install command
+    install_parser = subparsers.add_parser('install', help='Install template to Resolve')
+    install_parser.add_argument('template', help='Template .setting file')
+    install_parser.add_argument('--category', default='effects',
+                               choices=list(FUSION_CATEGORIES.keys()))
+    install_parser.add_argument('--global', action='store_true',
+                               help='Install globally (requires permissions)')
+
+    # Create HUD command
+    hud_parser = subparsers.add_parser('create-hud', help='Create custom HUD overlay')
+    hud_parser.add_argument('project', help='Project name')
+    hud_parser.add_argument('title', help='HUD title text')
+    hud_parser.add_argument('--subtitle', default='', help='HUD subtitle text')
+
+    # Import command
+    import_parser = subparsers.add_parser('import', help='Import templates from directory')
+    import_parser.add_argument('project', help='Project name')
+    import_parser.add_argument('source', help='Source directory')
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    if args.command == 'list':
+        list_templates(args.project)
+
+    elif args.command == 'install':
+        install_template(Path(args.template), args.category, args.__dict__.get('global', False))
+
+    elif args.command == 'create-hud':
+        create_hud_overlay(args.project, args.title, args.subtitle)
+
+    elif args.command == 'import':
+        import_templates(args.project, args.source)
+
+if __name__ == '__main__':
+    main()

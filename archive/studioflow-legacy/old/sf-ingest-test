@@ -1,0 +1,583 @@
+#!/usr/bin/env python3
+"""
+sf-ingest - Ultra-automated media pipeline from card to timeline
+Handles multi-camera setups, auto-organization, and Resolve project creation
+"""
+
+import sys
+import os
+import json
+import subprocess
+import shutil
+import hashlib
+from pathlib import Path
+from datetime import datetime
+import re
+
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import Project, JsonStream
+
+class UltraIngest:
+    def __init__(self):
+        self.json = JsonStream()
+        self.cameras = {
+            "FX30": {
+                "patterns": ["C[0-9]{4}\\.MP4", "PRIVATE/M4ROOT"],
+                "profile": "s-cinetone",
+                "fps": 29.97,
+                "resolution": "3840x2160",
+                "color_space": "Rec.709"
+            },
+            "ZV-E10": {
+                "patterns": ["DSC[0-9]{5}\\.MP4", "DCIM/[0-9]{3}MSDCF"],
+                "profile": "s-cinetone",
+                "fps": 29.97,
+                "resolution": "1920x1080",
+                "color_space": "Rec.709"
+            }
+        }
+
+        self.pool_dir = Path("/mnt/ingest/Camera/Pool/Test")
+        self.projects_dir = Path("/mnt/studio/Projects/Test")
+        self.archive_dir = Path("/mnt/archive/Projects")
+
+    def detect_camera(self, mount_point):
+        """Identify camera model from card structure"""
+        mount = Path(mount_point)
+
+        # Check for Sony FX30 structure
+        if (mount / "PRIVATE" / "M4ROOT").exists():
+            return "FX30"
+
+        # Check for ZV-E10 structure
+        if (mount / "DCIM").exists():
+            for folder in (mount / "DCIM").iterdir():
+                if folder.is_dir() and "MSDCF" in folder.name:
+                    return "ZV-E10"
+
+        return "UNKNOWN"
+
+    def detect_active_project(self):
+        """Use project manager to get or select active project"""
+        # Use the project manager to handle multi-day projects
+        result = subprocess.run(
+            ["/mnt/projects/studioflow/sf-project-manager", "active"],
+            capture_output=True,
+            text=True
+        )
+
+        if "No active project" in result.stdout:
+            # Let user select or create project
+            result = subprocess.run(
+                ["/mnt/projects/studioflow/sf-project-manager", "select"],
+                capture_output=True,
+                text=True
+            )
+
+        # Extract project path from output
+        for line in result.stdout.split('\n'):
+            if "Active project:" in line or "Working on:" in line:
+                project_name = line.split(":")[-1].strip()
+                # Find the actual path
+                for base in ["/mnt/studio/Projects", "/mnt/archive/Projects"]:
+                    project_path = Path(base) / project_name
+                    if project_path.exists():
+                        return project_path
+
+        # Fallback to creating new project
+        today = datetime.now().strftime("%Y%m%d")
+        project_name = f"{today}_Import"
+        project_path = self.projects_dir / project_name
+        project_path.mkdir(parents=True, exist_ok=True)
+        return project_path
+
+    def analyze_clip(self, file_path):
+        """Deep analysis of clip content"""
+        try:
+            # Get technical metadata
+            probe_cmd = [
+                "ffprobe", "-v", "quiet",
+                "-print_format", "json",
+                "-show_format", "-show_streams",
+                str(file_path)
+            ]
+            result = subprocess.run(probe_cmd, capture_output=True, text=True)
+            metadata = json.loads(result.stdout)
+
+            # Extract key info
+            duration = float(metadata['format'].get('duration', 0))
+            video_stream = next((s for s in metadata['streams'] if s['codec_type'] == 'video'), {})
+            audio_stream = next((s for s in metadata['streams'] if s['codec_type'] == 'audio'), {})
+
+            # Categorize by content type
+            category = self.categorize_clip(file_path.name, duration, video_stream)
+
+            return {
+                "filename": file_path.name,
+                "duration": duration,
+                "resolution": f"{video_stream.get('width')}x{video_stream.get('height')}",
+                "fps": eval(video_stream.get('r_frame_rate', '30/1')),
+                "codec": video_stream.get('codec_name'),
+                "audio_channels": audio_stream.get('channels', 0),
+                "category": category,
+                "file_size": file_path.stat().st_size,
+                "creation_time": metadata['format'].get('tags', {}).get('creation_time')
+            }
+        except Exception as e:
+            return {"filename": file_path.name, "error": str(e)}
+
+    def categorize_clip(self, filename, duration, video_info):
+        """Smart categorization based on multiple factors"""
+        width = video_info.get('width', 0)
+        height = video_info.get('height', 0)
+
+        # Screen recording detection
+        if width == 2560 and height == 1440:  # Your monitor resolution
+            return "screen_capture"
+        elif "OBS" in filename.upper() or "SCREEN" in filename.upper():
+            return "screen_capture"
+
+        # Duration-based categorization
+        if duration < 3:
+            return "test_clip"
+        elif duration < 10:
+            return "b_roll"
+        elif duration > 60:
+            return "a_roll"
+        elif 10 <= duration <= 30:
+            return "b_roll"
+        else:
+            return "general"
+
+    def import_from_card(self, device, mount_point):
+        """Complete import workflow"""
+        self.json.emit({"event": "import_start", "device": device})
+
+        # 1. Detect camera
+        camera = self.detect_camera(mount_point)
+        self.json.emit({"event": "camera_detected", "model": camera})
+
+        # 2. Find or create project
+        project = self.detect_active_project()
+        if not project:
+            # Auto-create project based on date
+            project_name = datetime.now().strftime("%Y%m%d_Import")
+            project = self.projects_dir / project_name
+            self.create_project(project)
+
+        self.json.emit({"event": "project_selected", "path": str(project)})
+
+        # 3. Import to pool with structure (directly in Test for testing)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        import_dir = self.pool_dir / f"{timestamp}_{camera}"
+        import_dir.mkdir(parents=True, exist_ok=True)
+
+        # 4. Smart copy with verification and duplicate detection
+        clips_metadata = []
+        mount = Path(mount_point)
+
+        # Load project metadata to check for duplicates
+        metadata_file = project / ".studioflow" / "metadata.json"
+        if metadata_file.exists():
+            with open(metadata_file) as f:
+                proj_metadata = json.load(f)
+        else:
+            proj_metadata = {"sessions": []}
+
+        # Check for existing imports to avoid duplicates
+        existing_clips = set()
+        for session in proj_metadata.get("sessions", []):
+            if session.get("import_path"):
+                session_path = Path(session["import_path"])
+                if session_path.exists():
+                    for existing in session_path.glob("**/*.MP4"):
+                        existing_clips.add(existing.name)
+
+        # Find all media files
+        patterns = ["**/*.MP4", "**/*.mp4", "**/*.MOV", "**/*.mov"]
+        media_files = []
+        for pattern in patterns:
+            media_files.extend(mount.glob(pattern))
+
+        total_files = len(media_files)
+        skipped_count = 0
+
+        for idx, file in enumerate(media_files, 1):
+            # Skip if already imported
+            if file.name in existing_clips:
+                self.json.emit({
+                    "event": "clip_skipped",
+                    "file": file.name,
+                    "reason": "duplicate"
+                })
+                skipped_count += 1
+                continue
+
+            # Copy file
+            dest = import_dir / file.name
+            shutil.copy2(file, dest)
+
+            # Copy sidecar XML if exists
+            xml_file = file.with_suffix('.XML')
+            if xml_file.exists():
+                shutil.copy2(xml_file, import_dir / xml_file.name)
+
+            # Analyze clip
+            clip_info = self.analyze_clip(dest)
+            clip_info['camera'] = camera
+            clips_metadata.append(clip_info)
+
+            self.json.emit({
+                "event": "clip_imported",
+                "progress": f"{idx}/{total_files}",
+                "clip": clip_info
+            })
+
+        # 5. Track import session
+        total_duration = sum(c.get('duration', 0) for c in clips_metadata)
+        total_size = sum(c.get('file_size', 0) for c in clips_metadata)
+        categories_count = {}
+        for clip in clips_metadata:
+            cat = clip.get('category', 'unknown')
+            categories_count[cat] = categories_count.get(cat, 0) + 1
+
+        session_data = {
+            "source": str(mount_point),
+            "camera": camera,
+            "clips": len(clips_metadata),
+            "duration": total_duration,
+            "size": total_size,
+            "categories": categories_count,
+            "import_path": str(import_dir)
+        }
+
+        # Add session to project metadata
+        subprocess.run([
+            "/mnt/projects/studioflow/sf-project-manager",
+            "add-session",
+            str(project),
+            json.dumps(session_data)
+        ])
+
+        # 6. Generate Resolve setup
+        if clips_metadata:
+            # Check how many sessions this project has had
+            metadata_file = project / ".studioflow" / "metadata.json"
+            if metadata_file.exists():
+                with open(metadata_file) as f:
+                    proj_metadata = json.load(f)
+                    current_session = len(proj_metadata.get("sessions", []))
+            else:
+                current_session = 1
+
+            self.setup_resolve_project(project, clips_metadata, camera, current_session)
+
+        # 7. Safe unmount
+        subprocess.run(["sync"], check=True)
+        subprocess.run(["umount", mount_point], check=False)
+
+        self.json.emit({
+            "event": "import_complete",
+            "total_clips": len(clips_metadata),
+            "new_clips": len(clips_metadata),
+            "skipped_duplicates": skipped_count,
+            "project": str(project),
+            "import_dir": str(import_dir),
+            "session": session_data
+        })
+
+        # Print summary
+        print(f"\n📊 Import Summary:")
+        print(f"  New clips: {len(clips_metadata)}")
+        print(f"  Skipped (duplicates): {skipped_count}")
+        print(f"  Total on card: {total_files}")
+
+        return import_dir, clips_metadata
+
+    def create_project(self, project_path):
+        """Create optimized YouTube project structure"""
+        project_path.mkdir(parents=True, exist_ok=True)
+
+        # Create folder structure
+        folders = [
+            "01_FOOTAGE/A_ROLL",
+            "01_FOOTAGE/B_ROLL",
+            "01_FOOTAGE/SCREEN",
+            "01_FOOTAGE/MULTICAM",
+            "02_AUDIO/DIALOGUE",
+            "02_AUDIO/MUSIC",
+            "02_AUDIO/SFX",
+            "03_GRAPHICS/TITLES",
+            "03_GRAPHICS/OVERLAYS",
+            "03_GRAPHICS/THUMBNAILS",
+            "04_EDIT/TIMELINES",
+            "04_EDIT/CACHE",
+            "04_EDIT/PROXIES",
+            "05_EXPORT/MASTERS",
+            "05_EXPORT/YOUTUBE",
+            "05_EXPORT/PLATFORMS"
+        ]
+
+        for folder in folders:
+            (project_path / folder).mkdir(parents=True, exist_ok=True)
+
+        # Create project metadata
+        metadata = {
+            "created": datetime.now().isoformat(),
+            "type": "youtube_4k",
+            "cameras": ["FX30", "ZV-E10"],
+            "target_platform": "YouTube",
+            "settings": {
+                "resolution": "3840x2160",
+                "fps": 29.97,
+                "color_space": "Rec.709",
+                "audio_target": "-14 LUFS"
+            }
+        }
+
+        studioflow_dir = project_path / ".studioflow"
+        studioflow_dir.mkdir(exist_ok=True)
+
+        with open(studioflow_dir / "project.json", "w") as f:
+            json.dump(metadata, f, indent=2)
+
+    def setup_resolve_project(self, project_path, clips_metadata, primary_camera, session_num=1):
+        """Generate complete Resolve setup script"""
+
+        # Organize clips by category
+        organized = {
+            "a_roll": [],
+            "b_roll": [],
+            "screen_capture": [],
+            "multicam": [],
+            "test_clip": [],
+            "general": []  # Add general category for misc clips
+        }
+
+        for clip in clips_metadata:
+            category = clip.get('category', 'general')
+            organized[category].append(clip)
+
+        # Check for multicam (same timecode range from different cameras)
+        if primary_camera == "FX30":
+            # Look for matching ZV-E10 clips by time
+            organized['multicam'] = self.find_multicam_pairs(clips_metadata)
+
+        # Check if this is first import (no Resolve project exists yet)
+        resolve_flag = project_path / ".studioflow" / "resolve" / "project_created.flag"
+        is_first_import = not resolve_flag.exists()
+
+        # Generate Resolve Python script
+        script = f'''#!/usr/bin/env python
+# Ultra-Optimized Resolve Setup - Session {session_num}
+# First Import: {is_first_import}
+# Generated by sf-ingest
+# Run in DaVinci Resolve Console (Workspace -> Console -> Py3)
+
+import DaVinciResolveScript as dvr
+
+# Initialize
+resolve = dvr.scriptapp("Resolve")
+pm = resolve.GetProjectManager()
+
+# Create or load project
+project_name = "{project_path.name}_YouTube_4K"
+existing_project = pm.GetProjectByName(project_name)
+
+if {is_first_import}:  # First import - create everything
+    print("🎬 FIRST IMPORT - Creating new project and complete setup...")
+
+    if existing_project:
+        pm.LoadProject(existing_project)
+        project = pm.GetCurrentProject()
+    else:
+        project = pm.CreateProject(project_name)
+        print(f"✅ Created project: {{project_name}}")
+
+    # YouTube-optimized settings
+    project.SetSetting("timelineResolutionWidth", "3840")
+    project.SetSetting("timelineResolutionHeight", "2160")
+    project.SetSetting("timelineFrameRate", "29.97")
+    project.SetSetting("colorScienceMode", "davinciYRGBColorManaged")
+    project.SetSetting("colorSpaceInput", "Rec.709")
+    project.SetSetting("colorSpaceTimeline", "Rec.709")
+    project.SetSetting("colorSpaceOutput", "Rec.709")
+    project.SetSetting("timelineWorkingLuminance", "100")
+
+    # Get media pool
+    mp = project.GetMediaPool()
+    root = mp.GetRootFolder()
+
+    # Create bin structure
+    bins = {{}}
+    footage_bin = mp.AddSubFolder(root, "01_FOOTAGE")
+    bins['a_roll'] = mp.AddSubFolder(footage_bin, "A_ROLL")
+    bins['b_roll'] = mp.AddSubFolder(footage_bin, "B_ROLL")
+    bins['screen'] = mp.AddSubFolder(footage_bin, "SCREEN")
+    bins['multicam'] = mp.AddSubFolder(footage_bin, "MULTICAM")
+
+    audio_bin = mp.AddSubFolder(root, "02_AUDIO")
+    bins['dialogue'] = mp.AddSubFolder(audio_bin, "DIALOGUE")
+    bins['music'] = mp.AddSubFolder(audio_bin, "MUSIC")
+
+    graphics_bin = mp.AddSubFolder(root, "03_GRAPHICS")
+    bins['titles'] = mp.AddSubFolder(graphics_bin, "TITLES")
+    bins['thumbnails'] = mp.AddSubFolder(graphics_bin, "THUMBNAILS")
+
+    # Create timeline
+    timeline = mp.CreateEmptyTimeline("Main_Edit_4K30_YouTube")
+
+    # Mark as created
+    print("✅ First import complete! Resolve project ready.")
+
+    # Create flag file to indicate project exists
+    import os
+    flag_file = r"{project_path / '.studioflow' / 'resolve' / 'project_created.flag'}"
+    os.makedirs(os.path.dirname(flag_file), exist_ok=True)
+    with open(flag_file, "w") as f:
+        f.write("{datetime.now().isoformat()}")
+
+else:  # Subsequent imports
+    print(f"📂 SESSION {session_num} - Adding to existing project...")
+
+    if not existing_project:
+        print("❌ Error: Project doesn't exist. Run first import.")
+        exit(1)
+
+    pm.LoadProject(existing_project)
+    project = pm.GetCurrentProject()
+
+    # Get media pool and existing bins
+    mp = project.GetMediaPool()
+    root = mp.GetRootFolder()
+
+    # Find existing bins
+    bins = {{}}
+    for folder in root.GetSubFolderList():
+        if "FOOTAGE" in folder.GetName():
+            for sub in folder.GetSubFolderList():
+                name = sub.GetName()
+                if "A_ROLL" in name:
+                    bins['a_roll'] = sub
+                elif "B_ROLL" in name:
+                    bins['b_roll'] = sub
+                elif "SCREEN" in name:
+                    bins['screen'] = sub
+
+# Import organized media
+'''
+
+        # Add import commands for each category
+        for category, clips in organized.items():
+            if clips and category != 'test_clip':
+                script += f"\n# Import {category.upper().replace('_', ' ')}\n"
+                script += f"if bins.get('{category}'):\n"
+                script += f"    mp.SetCurrentFolder(bins['{category}'])\n"
+                script += f"    {category}_files = [\n"
+                for clip in clips:
+                    # Use full path from import location
+                    clip_path = project_path.parent / "Pool" / datetime.now().strftime("%Y-%m") / f"*{primary_camera}" / clip['filename']
+                    script += f'        r"{clip_path}",\n'
+                script += "    ]\n"
+                script += f"    mp.ImportMedia({category}_files)\n"
+
+        # Add timeline creation
+        script += '''
+# Create optimized timeline
+timeline_name = "Main_Edit_4K30_YouTube"
+mp.SetCurrentFolder(root)
+timeline = mp.CreateEmptyTimeline(timeline_name)
+
+if timeline:
+    timeline.SetSetting("timelineResolutionWidth", "3840")
+    timeline.SetSetting("timelineResolutionHeight", "2160")
+    timeline.SetSetting("timelineFrameRate", "29.97")
+
+    # Add structure markers
+    markers = [
+        (0, "Red", "HOOK", "0:00-0:20"),
+        (600, "Blue", "INTRO", "0:20-0:45"),
+        (1350, "Green", "MAIN", "0:45-7:30"),
+        (13500, "Orange", "PAYOFF", "7:30-8:40"),
+        (16200, "Red", "CTA", "8:40-9:00")
+    ]
+
+    for frame, color, name, note in markers:
+        timeline.AddMarker(frame, color, name, note, 1)
+
+print("✅ Setup complete! Ready for YouTube production")
+print(f"  Resolution: 4K (forces VP9/AV1)")
+print(f"  Audio Target: -14 LUFS")
+print(f"  A-Roll Clips: {len(organized['a_roll'])}")
+print(f"  B-Roll Clips: {len(organized['b_roll'])}")
+print(f"  Screen Clips: {len(organized['screen_capture'])}")
+'''
+
+        # Save resolve script
+        resolve_dir = project_path / ".studioflow" / "resolve"
+        resolve_dir.mkdir(parents=True, exist_ok=True)
+
+        script_path = resolve_dir / "auto_setup.py"
+        script_path.write_text(script)
+
+        # Also save organized metadata
+        metadata_path = resolve_dir / "clips_metadata.json"
+        with open(metadata_path, "w") as f:
+            json.dump({
+                "import_date": datetime.now().isoformat(),
+                "primary_camera": primary_camera,
+                "organized": {k: len(v) for k, v in organized.items()},
+                "clips": clips_metadata
+            }, f, indent=2)
+
+        self.json.emit({
+            "event": "resolve_setup_created",
+            "script": str(script_path),
+            "categories": {k: len(v) for k, v in organized.items()}
+        })
+
+        return script_path
+
+    def find_multicam_pairs(self, clips):
+        """Identify multicam sync opportunities"""
+        multicam_groups = []
+
+        # Group clips by overlapping time ranges
+        for clip in clips:
+            if clip.get('camera') == 'FX30' and clip.get('duration', 0) > 30:
+                # Look for matching B-cam footage within 5 minutes
+                fx30_time = clip.get('creation_time', '')
+                if fx30_time:
+                    # Find ZV-E10 clips in same time window
+                    for other in clips:
+                        if other.get('camera') == 'ZV-E10':
+                            # Check time overlap (simplified - would need proper timestamp parsing)
+                            multicam_groups.append({
+                                'main': clip['filename'],
+                                'b_cam': other['filename'],
+                                'sync_method': 'audio_waveform'
+                            })
+
+        return multicam_groups
+
+def main():
+    ingest = UltraIngest()
+
+    if len(sys.argv) < 3:
+        print("Usage: sf-ingest <device> <mount_point>")
+        print("\nUltra-automated import from camera card to Resolve project")
+        print("\nFeatures:")
+        print("  • Auto-detects FX30 or ZV-E10 cameras")
+        print("  • Finds or creates active project")
+        print("  • Analyzes and categorizes all clips")
+        print("  • Generates Resolve setup script")
+        print("  • Handles multicam workflows")
+        sys.exit(1)
+
+    device = sys.argv[1]
+    mount_point = sys.argv[2]
+
+    ingest.import_from_card(device, mount_point)
+
+if __name__ == "__main__":
+    main()

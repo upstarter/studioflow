@@ -1,0 +1,403 @@
+#!/usr/bin/env python3
+"""
+sf-audio - Audio processing workflow
+Transcription, music library, voice processing
+"""
+
+import sys
+import json
+import argparse
+import subprocess
+from pathlib import Path
+from datetime import datetime
+
+sys.path.insert(0, '/mnt/projects/studioflow')
+from sfcore import Project, JsonStream, find_project, CliHelper, STORAGE_TIERS
+
+def transcribe(audio_file: str, model: str = "base", language: str = "auto"):
+    """Transcribe audio using Whisper AI with enhanced features"""
+    audio_path = Path(audio_file)
+    if not audio_path.exists():
+        JsonStream.error(f"Audio file not found: {audio_file}")
+        return
+
+    output_dir = audio_path.parent
+    output_base = audio_path.stem
+
+    # Generate output files
+    srt_file = output_dir / f"{output_base}.srt"
+    vtt_file = output_dir / f"{output_base}.vtt"
+    txt_file = output_dir / f"{output_base}.txt"
+    json_file = output_dir / f"{output_base}_transcript.json"
+
+    print(f"🎤 Transcribing {audio_path.name} with Whisper {model} model...")
+
+    # Try Python API first (more control)
+    try:
+        import whisper
+
+        # Load model with progress tracking
+        print(f"   Loading Whisper {model} model...")
+        model_obj = whisper.load_model(model)
+
+        # Transcribe with options
+        print(f"   Processing audio (this may take a while)...")
+        options = {
+            "language": None if language == "auto" else language,
+            "task": "transcribe",
+            "verbose": False,
+            "fp16": False  # Use FP32 for better accuracy
+        }
+
+        result = model_obj.transcribe(str(audio_path), **options)
+
+        # Save in multiple formats
+        segments = result["segments"]
+        text = result["text"].strip()
+
+        # Save plain text
+        txt_file.write_text(text)
+
+        # Generate SRT format
+        with open(srt_file, "w") as f:
+            for i, segment in enumerate(segments, 1):
+                start = format_timestamp(segment["start"])
+                end = format_timestamp(segment["end"])
+                text_line = segment["text"].strip()
+                f.write(f"{i}\n{start} --> {end}\n{text_line}\n\n")
+
+        # Generate WebVTT format
+        with open(vtt_file, "w") as f:
+            f.write("WEBVTT\n\n")
+            for segment in segments:
+                start = format_timestamp_vtt(segment["start"])
+                end = format_timestamp_vtt(segment["end"])
+                text_line = segment["text"].strip()
+                f.write(f"{start} --> {end}\n{text_line}\n\n")
+
+        # Save detailed JSON with timestamps
+        json_data = {
+            "text": text,
+            "language": result.get("language", "unknown"),
+            "duration": segments[-1]["end"] if segments else 0,
+            "segments": [
+                {
+                    "id": i,
+                    "start": seg["start"],
+                    "end": seg["end"],
+                    "text": seg["text"].strip(),
+                    "words": seg.get("words", [])
+                }
+                for i, seg in enumerate(segments)
+            ]
+        }
+
+        with open(json_file, "w") as f:
+            json.dump(json_data, f, indent=2)
+
+        # Print summary
+        print(f"✅ Transcription complete!")
+        print(f"   Language: {result.get('language', 'unknown')}")
+        print(f"   Duration: {json_data['duration']:.1f} seconds")
+        print(f"   Segments: {len(segments)}")
+
+        JsonStream.success(
+            f"Transcribed {audio_path.name}",
+            {
+                "txt": str(txt_file),
+                "srt": str(srt_file),
+                "vtt": str(vtt_file),
+                "json": str(json_file),
+                "language": result.get("language"),
+                "segments": len(segments),
+                "duration": json_data['duration']
+            }
+        )
+
+    except ImportError:
+        # Fall back to CLI if available
+        print("   Python API not available, trying CLI...")
+        try:
+            cmd = [
+                "whisper",
+                str(audio_path),
+                "--model", model,
+                "--output_dir", str(output_dir),
+                "--output_format", "all"
+            ]
+            if language != "auto":
+                cmd.extend(["--language", language])
+
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+            JsonStream.success(
+                f"Transcribed {audio_path.name}",
+                {
+                    "srt": str(srt_file),
+                    "txt": str(txt_file),
+                    "json": str(json_file)
+                }
+            )
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            # Whisper not installed, provide instructions
+            print("\n⚠️  Whisper not installed. Install with:")
+            print("    pip install openai-whisper")
+            print("\n    Or for faster GPU support:")
+            print("    pip install openai-whisper[cuda]")
+            print("\nAlternatively, use free online services:")
+            print("  • YouTube Studio (upload as unlisted)")
+            print("  • Google Cloud Speech-to-Text")
+            print("  • AssemblyAI (free tier)")
+
+            # Create placeholder files with instructions
+            txt_file.write_text(f"# Transcript placeholder for {audio_path.name}\n\n"
+                              f"To generate transcript:\n"
+                              f"1. Install Whisper: pip install openai-whisper\n"
+                              f"2. Run: sf-audio transcribe {audio_file}\n")
+            JsonStream.success(f"Created placeholder transcript", {"txt": str(txt_file)})
+
+def format_timestamp(seconds: float) -> str:
+    """Format seconds to SRT timestamp (HH:MM:SS,mmm)"""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    millis = int((seconds % 1) * 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+
+def format_timestamp_vtt(seconds: float) -> str:
+    """Format seconds to WebVTT timestamp (HH:MM:SS.mmm)"""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    millis = int((seconds % 1) * 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}.{millis:03d}"
+
+def denoise(audio_file: str, level: str = "medium"):
+    """Remove background noise from audio"""
+    audio_path = Path(audio_file)
+    if not audio_path.exists():
+        JsonStream.error(f"Audio file not found: {audio_file}")
+
+    output_file = audio_path.parent / f"{audio_path.stem}_denoised{audio_path.suffix}"
+
+    # Noise reduction levels
+    levels = {
+        "light": "0.1",
+        "medium": "0.21",
+        "heavy": "0.35"
+    }
+
+    reduction = levels.get(level, "0.21")
+
+    try:
+        # Use ffmpeg with audio filters
+        cmd = [
+            "ffmpeg", "-i", str(audio_path),
+            "-af", f"afftdn=nf={reduction}",
+            "-c:a", "libmp3lame", "-b:a", "192k",
+            str(output_file)
+        ]
+        subprocess.run(cmd, capture_output=True, check=True)
+
+        JsonStream.success(
+            f"Denoised audio saved",
+            {"path": str(output_file), "reduction": level}
+        )
+    except subprocess.CalledProcessError:
+        JsonStream.error("Denoising failed. Check ffmpeg installation")
+
+def music_library():
+    """Manage music and SFX library"""
+    library_dir = STORAGE_TIERS["library"] / "Audio"
+
+    # Create organized structure
+    dirs = {
+        "YouTube_Audio_Library": "Free YouTube music",
+        "SFX": "Sound effects",
+        "Music/Upbeat": "Energetic background music",
+        "Music/Calm": "Relaxing background music",
+        "Music/Epic": "Dramatic music",
+        "Stingers": "Intro/outro sounds",
+        "Voice": "Voice samples and effects"
+    }
+
+    for dir_path, description in dirs.items():
+        full_path = library_dir / dir_path
+        full_path.mkdir(parents=True, exist_ok=True)
+
+        # Create info file
+        info_file = full_path / "INFO.txt"
+        if not info_file.exists():
+            info_file.write_text(f"{description}\n\nPlace audio files here.\n")
+
+    # List current library
+    music_files = []
+    for audio_file in library_dir.rglob("*.mp3"):
+        music_files.append({
+            "name": audio_file.name,
+            "path": str(audio_file),
+            "size_mb": round(audio_file.stat().st_size / (1024*1024), 2)
+        })
+
+    for audio_file in library_dir.rglob("*.wav"):
+        music_files.append({
+            "name": audio_file.name,
+            "path": str(audio_file),
+            "size_mb": round(audio_file.stat().st_size / (1024*1024), 2)
+        })
+
+    print(f"🎵 Music Library: {library_dir}")
+    print("=" * 60)
+    for dir_path in dirs.keys():
+        path = library_dir / dir_path
+        count = len(list(path.glob("*.mp3")) + list(path.glob("*.wav")))
+        if count > 0:
+            print(f"📁 {dir_path}: {count} files")
+
+    JsonStream.emit({"library": str(library_dir), "files": music_files})
+
+def voice_process(audio_file: str, enhance: bool = True):
+    """Process voice recording for clarity"""
+    audio_path = Path(audio_file)
+    if not audio_path.exists():
+        JsonStream.error(f"Audio file not found: {audio_file}")
+
+    output_file = audio_path.parent / f"{audio_path.stem}_voice{audio_path.suffix}"
+
+    try:
+        # Voice enhancement filters
+        filters = []
+
+        # EQ for voice clarity
+        filters.append("highpass=f=80")  # Remove rumble
+        filters.append("lowpass=f=15000")  # Remove high frequency noise
+
+        if enhance:
+            # Compression and normalization
+            filters.append("compand=attacks=0.3:points=-80/-80|-60/-40|-40/-30|-20/-20|-0/-0")
+            filters.append("loudnorm=I=-16:TP=-1.5:LRA=11")
+
+        filter_string = ",".join(filters)
+
+        cmd = [
+            "ffmpeg", "-i", str(audio_path),
+            "-af", filter_string,
+            "-c:a", "libmp3lame", "-b:a", "192k",
+            str(output_file)
+        ]
+        subprocess.run(cmd, capture_output=True, check=True)
+
+        JsonStream.success(
+            f"Voice processed",
+            {"path": str(output_file), "enhanced": enhance}
+        )
+    except subprocess.CalledProcessError:
+        JsonStream.error("Voice processing failed")
+
+def extract_audio(video_file: str, project: str = None):
+    """Extract audio from video file"""
+    video_path = Path(video_file)
+    if not video_path.exists():
+        JsonStream.error(f"Video file not found: {video_file}")
+
+    # Determine output location
+    if project:
+        proj = find_project(project)
+        if proj:
+            output_dir = proj.path / "02_AUDIO"
+            output_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            output_dir = video_path.parent
+    else:
+        output_dir = video_path.parent
+
+    output_file = output_dir / f"{video_path.stem}_audio.wav"
+
+    try:
+        cmd = [
+            "ffmpeg", "-i", str(video_path),
+            "-vn",  # No video
+            "-acodec", "pcm_s16le",  # WAV format
+            "-ar", "48000",  # 48kHz sample rate
+            "-ac", "2",  # Stereo
+            str(output_file)
+        ]
+        subprocess.run(cmd, capture_output=True, check=True)
+
+        JsonStream.success(
+            f"Audio extracted",
+            {"path": str(output_file), "format": "WAV 48kHz"}
+        )
+    except subprocess.CalledProcessError:
+        JsonStream.error("Audio extraction failed")
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="sf-audio - Audio processing workflow",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  sf-audio transcribe video.mp4
+  sf-audio denoise recording.wav --level heavy
+  sf-audio voice narration.wav --enhance
+  sf-audio extract video.mp4 --project "My Video"
+  sf-audio library
+
+Audio Processing:
+  transcribe - Convert speech to text (Whisper AI)
+  denoise    - Remove background noise
+  voice      - Optimize voice recording
+  extract    - Extract audio from video
+  library    - Manage music/SFX library
+        """
+    )
+
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # Transcribe command
+    trans_parser = subparsers.add_parser("transcribe", help="Transcribe audio")
+    trans_parser.add_argument("audio", help="Audio/video file")
+    trans_parser.add_argument("-m", "--model", default="base",
+                             choices=["tiny", "base", "small", "medium", "large"],
+                             help="Whisper model size")
+    trans_parser.add_argument("-l", "--language", default="auto",
+                             help="Language code (e.g., 'en', 'es', 'fr') or 'auto'")
+
+    # Denoise command
+    denoise_parser = subparsers.add_parser("denoise", help="Remove noise")
+    denoise_parser.add_argument("audio", help="Audio file")
+    denoise_parser.add_argument("-l", "--level", default="medium",
+                               choices=["light", "medium", "heavy"],
+                               help="Noise reduction level")
+
+    # Voice command
+    voice_parser = subparsers.add_parser("voice", help="Process voice")
+    voice_parser.add_argument("audio", help="Voice recording")
+    voice_parser.add_argument("--enhance", action="store_true",
+                             help="Apply enhancement")
+
+    # Extract command
+    extract_parser = subparsers.add_parser("extract", help="Extract audio")
+    extract_parser.add_argument("video", help="Video file")
+    extract_parser.add_argument("-p", "--project", help="Target project")
+
+    # Library command
+    library_parser = subparsers.add_parser("library", help="Music library")
+
+    args = parser.parse_args()
+
+    if args.command == "transcribe":
+        transcribe(args.audio, args.model, args.language)
+    elif args.command == "denoise":
+        denoise(args.audio, args.level)
+    elif args.command == "voice":
+        voice_process(args.audio, args.enhance)
+    elif args.command == "extract":
+        extract_audio(args.video, args.project)
+    elif args.command == "library":
+        music_library()
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,70 @@
+# StudioFlow Default Configuration
+# This file is used to create user configs at ~/.studioflow/config.yaml
+
+user:
+  name: ${USER}
+  notification: true
+
+paths:
+  # Storage locations - customize for your system
+  # Defaults use ~/Videos/StudioFlow for portability
+  # Override in ~/.studioflow/config.yaml for your system
+  studioflow_install: ${HOME}/Videos/StudioFlow
+  studio_projects: ${HOME}/Videos/StudioFlow/Projects
+  ingest: ${HOME}/Videos/StudioFlow/Ingest
+  archive: ${HOME}/Videos/StudioFlow/Archive
+  library: ${HOME}/Videos/StudioFlow/Library
+  render: ${HOME}/Videos/StudioFlow/Render
+  nas: null  # Set to your NAS mount point if available
+
+resolve:
+  # DaVinci Resolve settings
+  install_path: /opt/resolve
+  api_path: /opt/resolve/Developer/Scripting
+  enabled: true
+
+project:
+  # Default project settings
+  resolution: "3840x2160"
+  framerate: 29.97
+  template: "YouTube 4K30 Optimized"
+  color_space: "Rec.709"
+  audio_target_lufs: -14.0
+
+  # Project folder structure
+  folder_structure:
+    - "01_MEDIA"
+    - "02_PROJECTS"
+    - "03_RENDERS"
+    - "04_ASSETS"
+    - ".studioflow"
+
+categorization:
+  # Clip categorization rules (seconds)
+  test_clip_max: 3
+  b_roll_min: 10
+  b_roll_max: 30
+  a_roll_min: 60
+
+import:
+  # Media import settings
+  file_extensions: [".MP4", ".MOV", ".AVI", ".MXF", ".XML", ".JPG", ".THM"]
+  verify_checksums: true
+  skip_duplicates: true
+  auto_organize: true
+
+  # Card import specific
+  pool_dir: ${HOME}/Videos/StudioFlow/Ingest/Camera/Pool
+  notification_enabled: true
+
+logging:
+  level: INFO
+  file: ${HOME}/.studioflow/studioflow.log
+  max_size_mb: 100
+
+features:
+  # Optional features
+  web_interface: false
+  youtube_integration: false
+  multicam_sync: false
+  thumbnail_generation: false

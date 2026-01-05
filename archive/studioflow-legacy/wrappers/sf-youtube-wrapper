@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+"""sf-youtube - Compatibility wrapper for new CLI"""
+import sys
+import subprocess
+import os
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+sf_command = os.path.join(script_dir, "sf")
+
+# Forward to new CLI
+args = [sf_command, "youtube"] + sys.argv[1:]
+sys.exit(subprocess.run(args).returncode)
